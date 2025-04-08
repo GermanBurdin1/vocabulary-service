@@ -10,12 +10,12 @@ import axios from 'axios';
 @Injectable()
 export class TranslationService {
 	constructor(private configService: ConfigService,
-		@InjectRepository(Translation)
-		private readonly translationRepo: Repository<Translation>,
-		@InjectRepository(TranslationStats)
-		private readonly statsRepo: Repository<TranslationStats>,) { }
+	@InjectRepository(Translation)
+	private readonly translationRepo: Repository<Translation>,
+	@InjectRepository(TranslationStats)
+	private readonly statsRepo: Repository<TranslationStats>,) { }
 	private readonly wiktionary = new WiktionaryReader();
-	private deeplCallTimestamps: number[] = []; // в ms
+	private deeplCallTimestamps: number[] = []; // en ms
 	private readonly DEEPL_LIMIT = 10;
 	private readonly DEEPL_INTERVAL = 60 * 1000; // 1 minute
 	private stats = {
@@ -23,7 +23,7 @@ export class TranslationService {
 		wiktionary: 0,
 		api: 0
 	};
-	
+
 	async getStats(): Promise<{ source: string; count: number }[]> {
 		const stats = await this.statsRepo.find({
 			order: { count: 'DESC' }
@@ -76,7 +76,6 @@ export class TranslationService {
 		}
 	}
 
-
 	async addTranslation(translation: Omit<Translation, 'id'>): Promise<Translation> {
 		const existing = await this.translationRepo.findOne({
 			where: {
@@ -96,7 +95,6 @@ export class TranslationService {
 		return this.translationRepo.save(newEntry);
 	}
 
-
 	async findBySource(
 		source: string,
 		sourceLang: 'ru' | 'fr' | 'en',
@@ -108,76 +106,97 @@ export class TranslationService {
 		targetLang: string;
 		from: 'wiktionary' | 'api' | 'cache';
 	}> {
+		console.log(`🟡 [findBySource] source="${source}", sourceLang="${sourceLang}", targetLang="${targetLang}"`);
+	
 		// 1. Поиск в базе как в кэше
-		const existing = await this.translationRepo.findOne({
-			where: {
-				source: source.toLowerCase(),
-				sourceLang,
-				targetLang,
-			},
-		});
-
-		if (existing) {
-			this.stats.cache++; // 👈
-			return {
-				word: source,
-				translations: [existing.target],
-				sourceLang,
-				targetLang,
-				from: 'cache',
-			};
-		}		
-
-		// 2. Попытка найти в Wiktionary
-		if (sourceLang === 'fr' && (targetLang === 'ru' || targetLang === 'en')) {
-			const wiktionaryResults = await this.wiktionary.find(source, targetLang);
-			if (wiktionaryResults.length > 0) {
-				const translationsFromDict = wiktionaryResults.flatMap(entry =>
-					entry.translations.map(t => t.word)
-				);
-
-				if (translationsFromDict[0]) {
-					this.stats.wiktionary++;
-					await this.addTranslation({
-						source,
-						target: translationsFromDict[0],
-						sourceLang,
-						targetLang,
-						meaning: 'wiktionary',
-					});
-				}
-
-				return {
-					word: source,
-					translations: translationsFromDict,
+		try {
+			const existing = await this.translationRepo.findOne({
+				where: {
+					source: source.toLowerCase(),
 					sourceLang,
 					targetLang,
-					from: 'wiktionary',
+				},
+			});
+	
+			if (existing) {
+				console.log(`🟢 Найдено в БД (cache): ${existing.target}`);
+				this.stats.cache++;
+				return {
+					word: source,
+					translations: [existing.target],
+					sourceLang,
+					targetLang,
+					from: 'cache',
 				};
 			}
+		} catch (err) {
+			console.error(`❌ Ошибка при поиске в БД (cache):`, err);
 		}
-
+	
+		// 2. Попытка найти в Wiktionary
+		if (sourceLang === 'fr' && (targetLang === 'ru' || targetLang === 'en')) {
+			try {
+				const wiktionaryResults = await this.wiktionary.find(source, targetLang);
+				console.log(`🔵 Wiktionary найдено:`, wiktionaryResults);
+	
+				if (wiktionaryResults.length > 0) {
+					const translationsFromDict = wiktionaryResults.flatMap(entry =>
+						entry.translations.map(t => t.word)
+					);
+	
+					if (translationsFromDict[0]) {
+						console.log(`🟢 Сохраняем перевод из Wiktionary: ${translationsFromDict[0]}`);
+						this.stats.wiktionary++;
+						await this.addTranslation({
+							source,
+							target: translationsFromDict[0],
+							sourceLang,
+							targetLang,
+							meaning: 'wiktionary',
+						});
+					}
+	
+					return {
+						word: source,
+						translations: translationsFromDict,
+						sourceLang,
+						targetLang,
+						from: 'wiktionary',
+					};
+				}
+			} catch (err) {
+				console.error(`❌ Ошибка при поиске в Wiktionary:`, err);
+			}
+		}
+	
 		// 3. Если ничего не найдено — DeepL
-		const apiResults = await this.translateViaApi(source, sourceLang, targetLang);
-
-		if (apiResults[0]) {
-			this.stats.api++; 
-			await this.addTranslation({
-				source,
-				target: apiResults[0],
+		try {
+			const apiResults = await this.translateViaApi(source, sourceLang, targetLang);
+			console.log(`🔴 DeepL вернул:`, apiResults);
+	
+			if (apiResults[0]) {
+				console.log(`🟢 Сохраняем перевод от DeepL: ${apiResults[0]}`);
+				this.stats.api++;
+				await this.addTranslation({
+					source,
+					target: apiResults[0],
+					sourceLang,
+					targetLang,
+					meaning: 'deepl',
+				});
+			}
+	
+			return {
+				word: source,
+				translations: apiResults,
 				sourceLang,
 				targetLang,
-				meaning: 'deepl',
-			});
+				from: 'api',
+			};
+		} catch (err) {
+			console.error(`❌ Ошибка при запросе в DeepL:`, err);
+			throw new Error('DEEPL_FAILED');
 		}
-
-		return {
-			word: source,
-			translations: apiResults,
-			sourceLang,
-			targetLang,
-			from: 'api',
-		};
 	}
 
 }

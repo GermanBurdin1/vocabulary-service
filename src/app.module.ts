@@ -5,10 +5,11 @@ import { VocabularyModule } from './vocabulary.module';
 import { GptModule } from './vocabulary/gpt/gpt.module';
 import { TranslationModule } from './translation/translation.module';
 import { LexiconModule } from './vocabulary/lexicon/lexicon.module';
-
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Lexicon } from './vocabulary/lexicon/lexicon.entity';
+import { Translation } from './translation/translation.entity';
+import { TranslationStats } from './translation/translation-stats.entity';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { Lexicon } from './vocabulary/lexicon/lexicon.entity';
         username: config.get<string>('DB_USERNAME'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
-        entities: [Lexicon],
+        entities: [Lexicon, Translation, TranslationStats],
+				// отключить на проде
         synchronize: true, 
       }),
       inject: [ConfigService],
