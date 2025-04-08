@@ -9,7 +9,7 @@ export class Lexicon {
   word: string;
 
   @Column()
-  translation: string;
+  translated: boolean;
 
   @Column()
   type: 'word' | 'expression';

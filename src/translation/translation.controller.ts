@@ -15,9 +15,10 @@ export class TranslationController {
 	constructor(private readonly service: TranslationService) { }
 
 	@Post()
-	add(@Body() body: Omit<Translation, 'id'>): Translation {
-		return this.service.addTranslation(body);
+	async add(@Body() body: Omit<Translation, 'id'>): Promise<Translation> {
+		return await this.service.addTranslation(body);
 	}
+
 
 	@Get()
 	async get(
@@ -35,6 +36,10 @@ export class TranslationController {
 		}
 	}
 
+	@Get('stats')
+	async getStats() {
+		return this.service.getStats();
+	}
 
 
 }
