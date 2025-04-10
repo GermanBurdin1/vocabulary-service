@@ -1,9 +1,17 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Lexicon } from 'src/vocabulary/lexicon/lexicon.entity';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 
-@Entity('translations') // 👈 важно: это будет связано с таблицей `translations` в БД
+@Entity('translations') 
 export class Translation {
   @PrimaryGeneratedColumn()
   id: number;
+
+	@ManyToOne(() => Lexicon, (lexicon) => lexicon.translations, { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'lexiconId' }) 
+	lexicon: Lexicon;
+
+	@Column({ nullable: true })
+	lexiconId?: number;
 
   @Column()
   source: string;

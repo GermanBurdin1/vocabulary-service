@@ -1,25 +1,40 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Translation } from 'src/translation/translation.entity';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 
 @Entity()
 export class Lexicon {
-  @PrimaryGeneratedColumn()
-  id: number;
+	@PrimaryGeneratedColumn()
+	id: number;
 
-  @Column()
-  word: string;
+	@OneToMany(() => Translation, (translation) => translation.lexicon)
+	translations: Translation[];
 
-  @Column()
-  translated: boolean;
+	@Column()
+	word: string;
 
-  @Column()
-  type: 'word' | 'expression';
+	@Column()
+	translated: boolean;
 
-  @Column()
-  galaxy: string;
+	@Column()
+	type: 'word' | 'expression';
 
-  @Column()
-  subtopic: string;
+	@Column()
+	galaxy: string;
 
-  @Column({ type: 'bigint' })
-  createdAt: number;
+	@Column()
+	subtopic: string;
+
+	@Column({ type: 'bigint' })
+	createdAt: number;
+
+		/**
+	 * Статус карточки:
+	 * - 'learned' — слово выучено, студент успешно перевёл.
+	 * - 'repeat' — слово отмечено как нуждающееся в повторении.
+	 * - 'error' — студент неоднократно ошибался при переводе этого слова.
+	 * - null — слово ещё не проверялось и не классифицировалось (новое по умолчанию)
+	 */
+	@Column({ nullable: true })
+	status: 'learned' | 'repeat' | 'error' | null;
+
 }

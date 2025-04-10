@@ -13,4 +13,5 @@ export const AppDataSource = new DataSource({
   entities: [Lexicon, TranslationStats, Translation],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
+	migrationsRun: false
 });

@@ -1,19 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { Translation } from './translation.entity';
 import { TranslationStats } from './translation-stats.entity';
+import { LexiconService } from 'src/vocabulary/lexicon/lexicon.service';
 import { WiktionaryReader } from './wiktionary.reader';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios from 'axios';
+import { Lexicon } from 'src/vocabulary/lexicon/lexicon.entity';
 
 @Injectable()
 export class TranslationService {
 	constructor(private configService: ConfigService,
-	@InjectRepository(Translation)
-	private readonly translationRepo: Repository<Translation>,
-	@InjectRepository(TranslationStats)
-	private readonly statsRepo: Repository<TranslationStats>,) { }
+		private lexiconService: LexiconService,
+		@InjectRepository(Translation)
+		private readonly translationRepo: Repository<Translation>,
+		@InjectRepository(TranslationStats)
+		private readonly statsRepo: Repository<TranslationStats>,) { }
+
 	private readonly wiktionary = new WiktionaryReader();
 	private deeplCallTimestamps: number[] = []; // en ms
 	private readonly DEEPL_LIMIT = 10;
@@ -28,12 +32,12 @@ export class TranslationService {
 		const stats = await this.statsRepo.find({
 			order: { count: 'DESC' }
 		});
-	
+
 		return stats.map(stat => ({
 			source: `${stat.sourceLang} → ${stat.targetLang} [${stat.from}]`,
 			count: stat.count
 		}));
-		
+
 	}
 
 	private isDeeplRateLimited(): boolean {
@@ -90,7 +94,7 @@ export class TranslationService {
 
 		const newEntry = this.translationRepo.create({
 			...translation,
-			source: translation.source.toLowerCase(), // для надёжности
+			source: translation.source.toLowerCase(), 
 		});
 		return this.translationRepo.save(newEntry);
 	}
@@ -107,7 +111,7 @@ export class TranslationService {
 		from: 'wiktionary' | 'api' | 'cache';
 	}> {
 		console.log(`🟡 [findBySource] source="${source}", sourceLang="${sourceLang}", targetLang="${targetLang}"`);
-	
+
 		// 1. Поиск в базе как в кэше
 		try {
 			const existing = await this.translationRepo.findOne({
@@ -117,7 +121,7 @@ export class TranslationService {
 					targetLang,
 				},
 			});
-	
+
 			if (existing) {
 				console.log(`🟢 Найдено в БД (cache): ${existing.target}`);
 				this.stats.cache++;
@@ -132,30 +136,39 @@ export class TranslationService {
 		} catch (err) {
 			console.error(`❌ Ошибка при поиске в БД (cache):`, err);
 		}
-	
+
 		// 2. Попытка найти в Wiktionary
 		if (sourceLang === 'fr' && (targetLang === 'ru' || targetLang === 'en')) {
 			try {
 				const wiktionaryResults = await this.wiktionary.find(source, targetLang);
 				console.log(`🔵 Wiktionary найдено:`, wiktionaryResults);
-	
+
 				if (wiktionaryResults.length > 0) {
 					const translationsFromDict = wiktionaryResults.flatMap(entry =>
 						entry.translations.map(t => t.word)
 					);
-	
+
 					if (translationsFromDict[0]) {
 						console.log(`🟢 Сохраняем перевод из Wiktionary: ${translationsFromDict[0]}`);
 						this.stats.wiktionary++;
-						await this.addTranslation({
-							source,
-							target: translationsFromDict[0],
-							sourceLang,
-							targetLang,
-							meaning: 'wiktionary',
-						});
+
+						const lexicon = await this.lexiconService.findByWord(source); 
+
+						if (lexicon) {
+							await this.addTranslation({
+								source,
+								target: translationsFromDict[0],
+								sourceLang,
+								targetLang,
+								meaning: 'wiktionary',
+								lexicon, 
+							});
+
+							await this.lexiconService.markAsTranslated(lexicon.id); 
+						}
+
 					}
-	
+
 					return {
 						word: source,
 						translations: translationsFromDict,
@@ -168,24 +181,32 @@ export class TranslationService {
 				console.error(`❌ Ошибка при поиске в Wiktionary:`, err);
 			}
 		}
-	
+
 		// 3. Если ничего не найдено — DeepL
 		try {
 			const apiResults = await this.translateViaApi(source, sourceLang, targetLang);
 			console.log(`🔴 DeepL вернул:`, apiResults);
-	
+		
 			if (apiResults[0]) {
 				console.log(`🟢 Сохраняем перевод от DeepL: ${apiResults[0]}`);
 				this.stats.api++;
-				await this.addTranslation({
-					source,
-					target: apiResults[0],
-					sourceLang,
-					targetLang,
-					meaning: 'deepl',
-				});
+		
+				const lexicon = await this.lexiconService.findByWord(source);
+		
+				if (lexicon) {
+					await this.addTranslation({
+						source,
+						target: apiResults[0],
+						sourceLang,
+						targetLang,
+						meaning: 'deepl',
+						lexicon,
+					});
+		
+					await this.lexiconService.markAsTranslated(lexicon.id);
+				}
 			}
-	
+		
 			return {
 				word: source,
 				translations: apiResults,
@@ -196,7 +217,7 @@ export class TranslationService {
 		} catch (err) {
 			console.error(`❌ Ошибка при запросе в DeepL:`, err);
 			throw new Error('DEEPL_FAILED');
-		}
+		}		
 	}
 
 }
