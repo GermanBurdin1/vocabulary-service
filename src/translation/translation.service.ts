@@ -7,8 +7,9 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios from 'axios';
-import { Lexicon } from 'src/vocabulary/lexicon/lexicon.entity';
 import { ManualTranslationDTO } from './dto/manual-translation.dto';
+import { ExtraTranslationDTO } from './dto/extra-translation.dto';
+import { UpdateTranslationDTO } from './dto/update-translation.dto';
 
 @Injectable()
 export class TranslationService {
@@ -134,7 +135,6 @@ export class TranslationService {
 		return saved;
 	}
 	
-
 	async findBySource(
 		source: string,
 		sourceLang: 'ru' | 'fr' | 'en',
@@ -198,6 +198,7 @@ export class TranslationService {
 								targetLang,
 								meaning: 'wiktionary',
 								lexicon, 
+								examples: [],
 							});
 
 							await this.lexiconService.markAsTranslated(lexicon.id); 
@@ -237,6 +238,7 @@ export class TranslationService {
 						targetLang,
 						meaning: 'deepl',
 						lexicon,
+						examples: [],
 					});
 		
 					await this.lexiconService.markAsTranslated(lexicon.id);
@@ -255,5 +257,41 @@ export class TranslationService {
 			throw new Error('DEEPL_FAILED');
 		}		
 	}
+
+	async addExtraTranslation(dto: ExtraTranslationDTO): Promise<Translation> {
+		const lexicon = await this.lexiconService.findById(dto.wordId);
+		if (!lexicon) throw new Error('❌ Lexicon not found');
+	
+		const existing = await this.translationRepo.findOne({
+			where: {
+				source: dto.sourceText.toLowerCase(),
+				target: dto.translation,
+				sourceLang: dto.sourceLang,
+				targetLang: dto.targetLang
+			}
+		});
+	
+		if (existing) return existing;
+	
+		const newEntry = this.translationRepo.create({
+			source: dto.sourceText.toLowerCase(),
+			target: dto.translation,
+			sourceLang: dto.sourceLang,
+			targetLang: dto.targetLang,
+			meaning: 'manual',
+			lexicon
+		});
+	
+		return await this.translationRepo.save(newEntry);
+	}	
+
+	async updateTranslation(dto: UpdateTranslationDTO): Promise<Translation> {
+		const translation = await this.translationRepo.findOneBy({ id: dto.translationId });
+		if (!translation) throw new Error('❌ Translation not found');
+	
+		translation.target = dto.newTranslation;
+		return this.translationRepo.save(translation);
+	}
+	
 
 }

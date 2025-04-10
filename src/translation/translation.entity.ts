@@ -1,5 +1,6 @@
 import { Lexicon } from 'src/vocabulary/lexicon/lexicon.entity';
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Example } from './example.entity';
 
 @Entity('translations') 
 export class Translation {
@@ -30,4 +31,8 @@ export class Translation {
 
   @Column({ nullable: true })
   example?: string;
+
+	@OneToMany(() => Example, example => example.translation)
+examples: Example[];
+
 }

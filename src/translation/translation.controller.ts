@@ -6,10 +6,13 @@ import {
 	Body,
 	Query,
 	HttpException,
+	Patch,
 } from '@nestjs/common';
 import { TranslationService } from './translation.service';
 import { Translation } from './translation.entity';
 import { ManualTranslationDTO } from './dto/manual-translation.dto';
+import { ExtraTranslationDTO } from './dto/extra-translation.dto';
+import { UpdateTranslationDTO } from './dto/update-translation.dto';
 
 @Controller('translation')
 export class TranslationController {
@@ -21,11 +24,9 @@ export class TranslationController {
 	}
 
 	@Post('manual')
-async addManual(@Body() body: ManualTranslationDTO): Promise<Translation> {
-  return await this.service.addManualTranslation(body);
-}
-
-
+	async addManual(@Body() body: ManualTranslationDTO): Promise<Translation> {
+		return await this.service.addManualTranslation(body);
+	}
 
 	@Get()
 	async get(
@@ -47,6 +48,17 @@ async addManual(@Body() body: ManualTranslationDTO): Promise<Translation> {
 	async getStats() {
 		return this.service.getStats();
 	}
+
+	// POST /translation/extra
+@Post('extra')
+async addExtraTranslation(@Body() dto: ExtraTranslationDTO): Promise<Translation> {
+  return this.service.addExtraTranslation(dto);
+}
+
+@Patch('edit')
+async updateTranslation(@Body() dto: UpdateTranslationDTO): Promise<Translation> {
+  return this.service.updateTranslation(dto);
+}
 
 
 }
