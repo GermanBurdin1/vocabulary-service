@@ -14,9 +14,12 @@ export class LexiconService {
 		const word = this.lexiconRepo.create({
 			...wordData,
 			createdAt: Date.now(),
-			translated: false, 
+			translated: false,
 		});
-		return this.lexiconRepo.save(word);
+		console.log('🛠 Создана сущность Lexicon:', word); 
+		const saved = await this.lexiconRepo.save(word);
+		console.log('💾 Сохранено в БД:', saved); 
+		return saved;
 	}
 
 	async addMany(words: Partial<Lexicon>[]): Promise<Lexicon[]> {
@@ -24,7 +27,7 @@ export class LexiconService {
 			this.lexiconRepo.create({
 				...data,
 				createdAt: Date.now(),
-				translated: false, 
+				translated: false,
 			}),
 		);
 		return this.lexiconRepo.save(wordEntities);
@@ -54,5 +57,8 @@ export class LexiconService {
 		return this.lexiconRepo.save(word);
 	}
 
+	async findById(id: number): Promise<Lexicon | null> {
+    return await this.lexiconRepo.findOne({ where: { id } });
+  }
 
 }

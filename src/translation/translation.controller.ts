@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { TranslationService } from './translation.service';
 import { Translation } from './translation.entity';
+import { ManualTranslationDTO } from './dto/manual-translation.dto';
 
 @Controller('translation')
 export class TranslationController {
@@ -18,6 +19,12 @@ export class TranslationController {
 	async add(@Body() body: Omit<Translation, 'id'>): Promise<Translation> {
 		return await this.service.addTranslation(body);
 	}
+
+	@Post('manual')
+async addManual(@Body() body: ManualTranslationDTO): Promise<Translation> {
+  return await this.service.addManualTranslation(body);
+}
+
 
 
 	@Get()

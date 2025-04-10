@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios from 'axios';
 import { Lexicon } from 'src/vocabulary/lexicon/lexicon.entity';
+import { ManualTranslationDTO } from './dto/manual-translation.dto';
 
 @Injectable()
 export class TranslationService {
@@ -98,6 +99,41 @@ export class TranslationService {
 		});
 		return this.translationRepo.save(newEntry);
 	}
+
+	async addManualTranslation(dto: ManualTranslationDTO): Promise<Translation> {
+		const lexicon = await this.lexiconService.findById(dto.wordId);
+		if (!lexicon) {
+			throw new Error('❌ Lexicon not found');
+		}
+	
+		const existing = await this.translationRepo.findOne({
+			where: {
+				source: dto.sourceText.toLowerCase(),
+				target: dto.translation,
+				sourceLang: dto.sourceLang,
+				targetLang: dto.targetLang,
+			},
+		});
+	
+		if (existing) {
+			console.log('⚠️ Ручной перевод уже существует:', existing);
+			return existing;
+		}
+	
+		const newEntry = this.translationRepo.create({
+			source: dto.sourceText.toLowerCase(), // ✅
+			target: dto.translation,              // ✅
+			sourceLang: dto.sourceLang,
+			targetLang: dto.targetLang,
+			meaning: 'manual',
+			lexicon,
+		});
+	
+		const saved = await this.translationRepo.save(newEntry);
+		console.log('✅ Ручной перевод сохранён:', saved);
+		return saved;
+	}
+	
 
 	async findBySource(
 		source: string,
