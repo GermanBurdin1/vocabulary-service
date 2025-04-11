@@ -7,6 +7,7 @@ import {
 	Query,
 	HttpException,
 	Patch,
+	Param,
 } from '@nestjs/common';
 import { TranslationService } from './translation.service';
 import { Translation } from './translation.entity';
@@ -58,6 +59,14 @@ async addExtraTranslation(@Body() dto: ExtraTranslationDTO): Promise<Translation
 @Patch('edit')
 async updateTranslation(@Body() dto: UpdateTranslationDTO): Promise<Translation> {
   return this.service.updateTranslation(dto);
+}
+
+@Patch(':id/examples')
+updateExamples(
+  @Param('id') id: number,
+  @Body('examples') examples: string[]
+) {
+  return this.service.updateExamples(id, examples);
 }
 
 

@@ -32,7 +32,8 @@ export class Translation {
   @Column({ nullable: true })
   example?: string;
 
-	@OneToMany(() => Example, example => example.translation)
+	@OneToMany(() => Example, example => example.translation, { cascade: true, eager: true })
 examples: Example[];
+
 
 }

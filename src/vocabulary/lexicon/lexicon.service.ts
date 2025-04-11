@@ -61,4 +61,11 @@ export class LexiconService {
     return await this.lexiconRepo.findOne({ where: { id } });
   }
 
+	async updateRevealed(id: number, revealed: boolean): Promise<Lexicon> {
+		return this.lexiconRepo.update({ id }, { revealed }).then(() =>
+			this.lexiconRepo.findOne({ where: { id } })
+		);
+	}
+	
+
 }

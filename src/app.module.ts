@@ -10,6 +10,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Lexicon } from './vocabulary/lexicon/lexicon.entity';
 import { Translation } from './translation/translation.entity';
 import { TranslationStats } from './translation/translation-stats.entity';
+import { Example } from './translation/example.entity';
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { TranslationStats } from './translation/translation-stats.entity';
         username: config.get<string>('DB_USERNAME'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
-        entities: [Lexicon, Translation, TranslationStats],
+        entities: [Lexicon, Translation, TranslationStats, Example],
 				// отключить на проде
         synchronize: true, 
       }),

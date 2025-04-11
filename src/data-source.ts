@@ -2,6 +2,7 @@ import { DataSource } from 'typeorm';
 import { Lexicon } from './vocabulary/lexicon/lexicon.entity';
 import { TranslationStats } from './translation/translation-stats.entity';
 import { Translation } from './translation/translation.entity';
+import { Example } from './translation/example.entity';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -10,7 +11,7 @@ export const AppDataSource = new DataSource({
   username: 'postgres',
   password: 'postgre',
   database: 'vocabulary_service',
-  entities: [Lexicon, TranslationStats, Translation],
+  entities: [Lexicon, TranslationStats, Translation, Example],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
 	migrationsRun: false

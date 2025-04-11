@@ -36,5 +36,10 @@ export class LexiconController {
 		return this.lexiconService.updateStatus(id, dto.status);
 	}
 
+	@Patch(':id/reveal')
+updateRevealed(@Param('id') id: number) {
+  return this.lexiconService.updateRevealed(+id, true);
+}
+
 
 }

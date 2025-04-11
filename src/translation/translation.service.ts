@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Translation } from './translation.entity';
 import { TranslationStats } from './translation-stats.entity';
 import { LexiconService } from 'src/vocabulary/lexicon/lexicon.service';
@@ -10,6 +10,8 @@ import axios from 'axios';
 import { ManualTranslationDTO } from './dto/manual-translation.dto';
 import { ExtraTranslationDTO } from './dto/extra-translation.dto';
 import { UpdateTranslationDTO } from './dto/update-translation.dto';
+import { Example } from './example.entity';
+
 
 @Injectable()
 export class TranslationService {
@@ -293,5 +295,27 @@ export class TranslationService {
 		return this.translationRepo.save(translation);
 	}
 	
-
+	async updateExamples(id: number, examples: string[]) {
+		const translation = await this.translationRepo.findOne({
+			where: { id },
+			relations: ['examples'] // 👈 нужно, если ты хочешь удалить старые примеры
+		});
+	
+		if (!translation) throw new NotFoundException('Translation not found');
+	
+		// Удалим старые примеры (если они были)
+		translation.examples = [];
+	
+		// Добавим новые
+		translation.examples = examples.map(sentence => {
+			const example = new Example();
+			example.sentence = sentence;
+			example.translation = translation;
+			return example;
+		});
+	
+		return await this.translationRepo.save(translation);
+	}
+	
+	
 }
