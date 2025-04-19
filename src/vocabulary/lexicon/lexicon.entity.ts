@@ -1,5 +1,6 @@
 import { Translation } from 'src/translation/translation.entity';
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Grammar } from 'src/grammar/grammar.entity';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne, JoinColumn } from 'typeorm';
 
 @Entity()
 export class Lexicon {
@@ -39,6 +40,10 @@ export class Lexicon {
 
 	@Column({ default: false })
 	revealed: boolean;
+
+	@OneToOne(() => Grammar, (grammar) => grammar.lexicon, { cascade: true, eager: true })
+@JoinColumn()
+grammar: Grammar;
 
 
 }

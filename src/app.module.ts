@@ -11,6 +11,8 @@ import { Lexicon } from './vocabulary/lexicon/lexicon.entity';
 import { Translation } from './translation/translation.entity';
 import { TranslationStats } from './translation/translation-stats.entity';
 import { Example } from './translation/example.entity';
+import { GrammarModule } from './grammar/grammar.module';
+import { Grammar } from './grammar/grammar.entity';
 
 @Module({
   imports: [
@@ -25,7 +27,7 @@ import { Example } from './translation/example.entity';
         username: config.get<string>('DB_USERNAME'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
-        entities: [Lexicon, Translation, TranslationStats, Example],
+        entities: [Lexicon, Translation, TranslationStats, Example, Grammar],
 				// отключить на проде
         synchronize: true, 
       }),
@@ -36,6 +38,7 @@ import { Example } from './translation/example.entity';
     GptModule,
     TranslationModule,
     LexiconModule,
+    GrammarModule,
   ],
   controllers: [AppController],
   providers: [AppService],
