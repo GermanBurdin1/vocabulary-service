@@ -30,6 +30,16 @@ export class TranslationController {
 	}
 
 	@Get()
+	/**
+	 * Translate a word from one language to another.
+	 *
+	 * @queryParam source the word to translate
+	 * @queryParam sourceLang the source language of the word (ru, fr, or en)
+	 * @queryParam targetLang the language to translate to (ru, fr, or en)
+	 *
+	 * @throws {HttpException} 500 if the translation service fails
+	 * @throws {HttpException} 429 if the translation service rate limit is exceeded
+	 */
 	async get(
 		@Query('source') source: string,
 		@Query('sourceLang') sourceLang: 'ru' | 'fr' | 'en',

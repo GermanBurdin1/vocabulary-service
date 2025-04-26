@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Lexicon } from './lexicon.entity';
 import { Grammar } from 'src/grammar/grammar.entity';
+import { Translation } from 'src/translation/translation.entity';
 
 @Injectable()
 export class LexiconService {
@@ -11,40 +12,63 @@ export class LexiconService {
 		private lexiconRepo: Repository<Lexicon>,
 		@InjectRepository(Grammar)
 		private readonly grammarRepo: Repository<Grammar>,
+		@InjectRepository(Translation) private readonly translationRepo: Repository<Translation>
 	) { }
 
+	/**
+	 * Save a single word in the lexicon.
+	 * @param wordData The word data to save.
+	 * @returns The saved word.
+	 */
 	async addOne(wordData: Partial<Lexicon>): Promise<Lexicon> {
 		let grammarEntity = null;
-
+	
 		if (wordData.grammar) {
-			// если есть grammar — сначала сохраняем грамматическую сущность
 			grammarEntity = this.grammarRepo.create(wordData.grammar);
 			grammarEntity = await this.grammarRepo.save(grammarEntity);
 			console.log('📚 Грамматика сохранена:', grammarEntity);
 		}
-
+	
 		const word = this.lexiconRepo.create({
 			...wordData,
-			grammar: grammarEntity ?? undefined, // сюда подставляем уже сохранённую грамматику
+			grammar: grammarEntity ?? undefined,
 			createdAt: Date.now(),
-			translated: false,
+			translated: wordData.translations && wordData.translations.length > 0 ? true : false,
 		});
-
+	
 		console.log('🛠 Создана сущность Lexicon:', word);
-
+	
 		const saved = await this.lexiconRepo.save(word);
 		console.log('💾 Сохранено в БД:', saved);
-
+		console.log("wordData.translations", wordData.translations);
+	
+		// 🔥 Теперь смотрим, есть ли переводы, и ОБНОВЛЯЕМ
+		if (wordData.translations && wordData.translations.length > 0) {
+			await this.lexiconRepo.update(saved.id, { translated: true });
+			saved.translated = true; // чтобы вернуть правильный объект тоже
+		}
+	
 		return saved;
 	}
 
-
+	
+	/**
+	 * Update a single word in the lexicon.
+	 * @param id ID of the word to update.
+	 * @param data The data to update the word with.
+	 * @returns The updated word.
+	 */
 	async updateOne(id: number, data: Partial<Lexicon>) {
 		await this.lexiconRepo.update({ id }, data);
 		return this.lexiconRepo.findOne({ where: { id } });
 	}
 
 
+	/**
+	 * Save multiple words in the lexicon at once.
+	 * @param words An array of word data to save.
+	 * @returns An array of saved words.
+	 */
 	async addMany(words: Partial<Lexicon>[]): Promise<Lexicon[]> {
 		const savedWords: Lexicon[] = [];
 	
