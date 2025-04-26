@@ -41,9 +41,8 @@ export class Lexicon {
 	@Column({ default: false })
 	revealed: boolean;
 
-	@OneToOne(() => Grammar, (grammar) => grammar.lexicon, { cascade: true, eager: true })
-@JoinColumn()
-grammar: Grammar;
+	@OneToOne(() => Grammar, (grammar) => grammar.lexicon, { cascade: false, nullable: true })
+grammar?: Grammar;
 
 
 }
