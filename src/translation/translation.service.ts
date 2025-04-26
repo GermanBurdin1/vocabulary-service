@@ -11,6 +11,26 @@ import { ManualTranslationDTO } from './dto/manual-translation.dto';
 import { ExtraTranslationDTO } from './dto/extra-translation.dto';
 import { UpdateTranslationDTO } from './dto/update-translation.dto';
 import { Example } from './example.entity';
+import { TranslationResponseDto } from './dto/translation-response.dto';
+import {
+	GrammarData,
+	PartOfSpeech,
+} from 'src/grammar/dto/grammar-data.dto';
+
+import { Grammar } from 'src/grammar/grammar.entity';
+
+type NewTranslation = Omit<Translation, 'id' | 'grammar'> & { grammar?: Grammar };
+const isPartOfSpeech = (pos: string): pos is PartOfSpeech =>
+	['noun', 'verb', 'adjective', 'adverb', 'pronoun', 'preposition', 'conjunction', 'interjection', 'expression'].includes(pos);
+
+const isGender = (val: string): val is 'masculine' | 'feminine' =>
+	['masculine', 'feminine'].includes(val);
+
+const isTransitivity = (val: string): val is 'transitive' | 'intransitive' =>
+	['transitive', 'intransitive'].includes(val);
+
+const isExpressionType = (val: string): val is 'idiom' | 'proverb' | 'saying' | 'quote' | 'collocation' | 'other' =>
+	['idiom', 'proverb', 'saying', 'quote', 'collocation', 'other'].includes(val);
 
 
 @Injectable()
@@ -84,7 +104,8 @@ export class TranslationService {
 		}
 	}
 
-	async addTranslation(translation: Omit<Translation, 'id'>): Promise<Translation> {
+
+	async addTranslation(translation: NewTranslation): Promise<Translation> {
 		const existing = await this.translationRepo.findOne({
 			where: {
 				source: translation.source.toLowerCase(),
@@ -98,7 +119,7 @@ export class TranslationService {
 
 		const newEntry = this.translationRepo.create({
 			...translation,
-			source: translation.source.toLowerCase(), 
+			source: translation.source.toLowerCase(),
 		});
 		return this.translationRepo.save(newEntry);
 	}
@@ -108,7 +129,7 @@ export class TranslationService {
 		if (!lexicon) {
 			throw new Error('❌ Lexicon not found');
 		}
-	
+
 		const existing = await this.translationRepo.findOne({
 			where: {
 				source: dto.sourceText.toLowerCase(),
@@ -117,12 +138,12 @@ export class TranslationService {
 				targetLang: dto.targetLang,
 			},
 		});
-	
+
 		if (existing) {
 			console.log('⚠️ Ручной перевод уже существует:', existing);
 			return existing;
 		}
-	
+
 		const newEntry = this.translationRepo.create({
 			source: dto.sourceText.toLowerCase(), // ✅
 			target: dto.translation,              // ✅
@@ -131,23 +152,34 @@ export class TranslationService {
 			meaning: 'manual',
 			lexicon,
 		});
-	
+
 		const saved = await this.translationRepo.save(newEntry);
 		console.log('✅ Ручной перевод сохранён:', saved);
 		return saved;
 	}
-	
+
+	// вспомогательная функция, чтобы преобразовать POS в GrammarData.pos
+	mapPos(pos: string): PartOfSpeech | undefined {
+		switch (pos) {
+			case 'noun': return 'noun';
+			case 'verb': return 'verb';
+			case 'adj': return 'adjective';
+			case 'adv': return 'adverb';
+			case 'pron': return 'pronoun';
+			case 'prep': return 'preposition';
+			case 'conj': return 'conjunction';
+			case 'intj': return 'interjection';
+			case 'expression': return 'expression';
+			default: return undefined;
+		}
+	}
+
+
 	async findBySource(
 		source: string,
 		sourceLang: 'ru' | 'fr' | 'en',
 		targetLang: 'ru' | 'fr' | 'en'
-	): Promise<{
-		word: string;
-		translations: string[];
-		sourceLang: string;
-		targetLang: string;
-		from: 'wiktionary' | 'api' | 'cache';
-	}> {
+	): Promise<TranslationResponseDto> {
 		console.log(`🟡 [findBySource] source="${source}", sourceLang="${sourceLang}", targetLang="${targetLang}"`);
 
 		// 1. Поиск в базе как в кэше
@@ -169,6 +201,15 @@ export class TranslationService {
 					sourceLang,
 					targetLang,
 					from: 'cache',
+					grammar: existing.grammar && isPartOfSpeech(existing.grammar.partOfSpeech)
+	? {
+		partOfSpeech: existing.grammar.partOfSpeech,
+		...(isGender(existing.grammar.gender) ? { gender: existing.grammar.gender } : {}),
+		...(isTransitivity(existing.grammar.transitivity) ? { transitivity: existing.grammar.transitivity } : {}),
+		...(isExpressionType(existing.grammar.expressionType) ? { expressionType: existing.grammar.expressionType } : {}),
+	}
+	: undefined,
+
 				};
 			}
 		} catch (err) {
@@ -186,26 +227,45 @@ export class TranslationService {
 						entry.translations.map(t => t.word)
 					);
 
+					// Грамматическая информация — берём POS из первого совпадения
+					const grammar: GrammarData | undefined = wiktionaryResults[0]?.grammar;
+
 					if (translationsFromDict[0]) {
 						console.log(`🟢 Сохраняем перевод из Wiktionary: ${translationsFromDict[0]}`);
 						this.stats.wiktionary++;
 
-						const lexicon = await this.lexiconService.findByWord(source); 
+						const lexicon = await this.lexiconService.findByWord(source);
 
 						if (lexicon) {
+
+							let grammarEntity: Grammar | undefined = undefined;
+
+							if (grammar) {
+								const g = new Grammar();
+								g.partOfSpeech = grammar.partOfSpeech;
+
+								if ('gender' in grammar) g.gender = grammar.gender;
+								if ('transitivity' in grammar) g.transitivity = grammar.transitivity;
+								if ('expressionType' in grammar) g.expressionType = grammar.expressionType;
+
+								grammarEntity = g;
+							}
+
+
+
 							await this.addTranslation({
 								source,
 								target: translationsFromDict[0],
 								sourceLang,
 								targetLang,
 								meaning: 'wiktionary',
-								lexicon, 
+								lexicon,
 								examples: [],
+								grammar: grammarEntity, // 👈 сохраняем, если есть
 							});
 
-							await this.lexiconService.markAsTranslated(lexicon.id); 
+							await this.lexiconService.markAsTranslated(lexicon.id);
 						}
-
 					}
 
 					return {
@@ -214,6 +274,7 @@ export class TranslationService {
 						sourceLang,
 						targetLang,
 						from: 'wiktionary',
+						grammar,
 					};
 				}
 			} catch (err) {
@@ -225,13 +286,13 @@ export class TranslationService {
 		try {
 			const apiResults = await this.translateViaApi(source, sourceLang, targetLang);
 			console.log(`🔴 DeepL вернул:`, apiResults);
-		
+
 			if (apiResults[0]) {
 				console.log(`🟢 Сохраняем перевод от DeepL: ${apiResults[0]}`);
 				this.stats.api++;
-		
+
 				const lexicon = await this.lexiconService.findByWord(source);
-		
+
 				if (lexicon) {
 					await this.addTranslation({
 						source,
@@ -241,29 +302,32 @@ export class TranslationService {
 						meaning: 'deepl',
 						lexicon,
 						examples: [],
+						// ⛔️ grammar: не извлекаем из deepl
 					});
-		
+
 					await this.lexiconService.markAsTranslated(lexicon.id);
 				}
 			}
-		
+
 			return {
 				word: source,
 				translations: apiResults,
 				sourceLang,
 				targetLang,
 				from: 'api',
+				grammar: undefined,
 			};
 		} catch (err) {
 			console.error(`❌ Ошибка при запросе в DeepL:`, err);
 			throw new Error('DEEPL_FAILED');
-		}		
+		}
 	}
+
 
 	async addExtraTranslation(dto: ExtraTranslationDTO): Promise<Translation> {
 		const lexicon = await this.lexiconService.findById(dto.wordId);
 		if (!lexicon) throw new Error('❌ Lexicon not found');
-	
+
 		const existing = await this.translationRepo.findOne({
 			where: {
 				source: dto.sourceText.toLowerCase(),
@@ -272,9 +336,9 @@ export class TranslationService {
 				targetLang: dto.targetLang
 			}
 		});
-	
+
 		if (existing) return existing;
-	
+
 		const newEntry = this.translationRepo.create({
 			source: dto.sourceText.toLowerCase(),
 			target: dto.translation,
@@ -283,29 +347,29 @@ export class TranslationService {
 			meaning: 'manual',
 			lexicon
 		});
-	
+
 		return await this.translationRepo.save(newEntry);
-	}	
+	}
 
 	async updateTranslation(dto: UpdateTranslationDTO): Promise<Translation> {
 		const translation = await this.translationRepo.findOneBy({ id: dto.translationId });
 		if (!translation) throw new Error('❌ Translation not found');
-	
+
 		translation.target = dto.newTranslation;
 		return this.translationRepo.save(translation);
 	}
-	
+
 	async updateExamples(id: number, examples: string[]) {
 		const translation = await this.translationRepo.findOne({
 			where: { id },
 			relations: ['examples'] // 👈 нужно, если ты хочешь удалить старые примеры
 		});
-	
+
 		if (!translation) throw new NotFoundException('Translation not found');
-	
+
 		// Удалим старые примеры (если они были)
 		translation.examples = [];
-	
+
 		// Добавим новые
 		translation.examples = examples.map(sentence => {
 			const example = new Example();
@@ -313,9 +377,9 @@ export class TranslationService {
 			example.translation = translation;
 			return example;
 		});
-	
+
 		return await this.translationRepo.save(translation);
 	}
-	
-	
+
+
 }

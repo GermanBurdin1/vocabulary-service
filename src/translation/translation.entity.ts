@@ -1,6 +1,7 @@
 import { Lexicon } from 'src/vocabulary/lexicon/lexicon.entity';
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, OneToOne } from 'typeorm';
 import { Example } from './example.entity';
+import { Grammar } from 'src/grammar/grammar.entity';
 
 @Entity('translations') 
 export class Translation {
@@ -33,7 +34,10 @@ export class Translation {
   example?: string;
 
 	@OneToMany(() => Example, example => example.translation, { cascade: true, eager: true })
-examples: Example[];
+	examples: Example[];
 
+	@OneToOne(() => Grammar, { cascade: true, eager: true, nullable: true })
+	@JoinColumn()
+	grammar?: Grammar;
 
 }

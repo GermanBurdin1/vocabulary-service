@@ -22,6 +22,12 @@ export class LexiconService {
 		return saved;
 	}
 
+	async updateOne(id: number, data: Partial<Lexicon>) {
+		await this.lexiconRepo.update({ id }, data);
+		return this.lexiconRepo.findOne({ where: { id } });
+	}
+	
+
 	async addMany(words: Partial<Lexicon>[]): Promise<Lexicon[]> {
 		const wordEntities = words.map(data =>
 			this.lexiconRepo.create({
