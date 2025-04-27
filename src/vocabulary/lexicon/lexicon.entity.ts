@@ -41,6 +41,9 @@ export class Lexicon {
 	@Column({ default: false })
 	revealed: boolean;
 
+	@Column({ default: false })
+	postponed: boolean;
+
 	@OneToOne(() => Grammar, (grammar) => grammar.lexicon, { cascade: false, nullable: true })
 grammar?: Grammar;
 

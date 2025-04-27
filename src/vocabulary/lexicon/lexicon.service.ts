@@ -34,6 +34,7 @@ export class LexiconService {
 			grammar: grammarEntity ?? undefined,
 			createdAt: Date.now(),
 			translated: wordData.translations && wordData.translations.length > 0 ? true : false,
+  		postponed: wordData.postponed ?? false, // << 🆕
 		});
 	
 		console.log('🛠 Создана сущность Lexicon:', word);
@@ -105,6 +106,7 @@ export class LexiconService {
 				grammar: grammarEntity ?? undefined, // если есть сохранённая грамматика — привязываем
 				createdAt: Date.now(),
 				translated: false,
+  			postponed: wordData.postponed ?? false, // << 🆕
 			});
 	
 			const saved = await this.lexiconRepo.save(word);
