@@ -44,8 +44,26 @@ export class LexiconService {
 	
 		// 🔥 Теперь смотрим, есть ли переводы, и ОБНОВЛЯЕМ
 		if (wordData.translations && wordData.translations.length > 0) {
+			const translations = wordData.translations.map(t => this.translationRepo.create({
+				source: t.source ?? '',
+				target: t.target,
+				sourceLang: t.sourceLang ?? 'fr',
+				targetLang: t.targetLang ?? 'ru',
+				meaning: t.meaning ?? '',
+				example: t.example ?? null,
+				lexicon: saved, // ⬅️ ВАЖНО: не lexiconId, а lexicon
+			}));
+	
+			await this.translationRepo.save(translations);
+			console.log('✅ Переводы сохранены:', translations);
+
+			// ➡️ ЛОГ: Сколько реально сохранилось в базе
+			const savedTranslations = await this.translationRepo.find({ where: { lexicon: { id: saved.id } } });
+			console.log('🔍 Проверка после сохранения: реально в БД переводов:', savedTranslations.length);
+
+	
 			await this.lexiconRepo.update(saved.id, { translated: true });
-			saved.translated = true; // чтобы вернуть правильный объект тоже
+			saved.translated = true;
 		}
 	
 		return saved;
