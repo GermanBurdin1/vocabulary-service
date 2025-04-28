@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { LexiconService } from './lexicon.service';
 import { Lexicon } from './lexicon.entity';
 import { UpdateLexiconStatusDto } from './dto/update-lexicon-status.dto';
@@ -39,6 +39,11 @@ export class LexiconController {
 	@Patch(':id/reveal')
 updateRevealed(@Param('id') id: number) {
   return this.lexiconService.updateRevealed(+id, true);
+}
+
+@Delete(':id')
+async deleteWord(@Param('id') id: number) {
+  return this.lexiconService.deleteWord(+id);
 }
 
 

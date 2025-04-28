@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DeleteResult } from 'typeorm';
 import { Lexicon } from './lexicon.entity';
 import { Grammar } from 'src/grammar/grammar.entity';
 import { Translation } from 'src/translation/translation.entity';
@@ -22,27 +22,27 @@ export class LexiconService {
 	 */
 	async addOne(wordData: Partial<Lexicon>): Promise<Lexicon> {
 		let grammarEntity = null;
-	
+
 		if (wordData.grammar) {
 			grammarEntity = this.grammarRepo.create(wordData.grammar);
 			grammarEntity = await this.grammarRepo.save(grammarEntity);
 			console.log('📚 Грамматика сохранена:', grammarEntity);
 		}
-	
+
 		const word = this.lexiconRepo.create({
 			...wordData,
 			grammar: grammarEntity ?? undefined,
 			createdAt: Date.now(),
 			translated: wordData.translations && wordData.translations.length > 0 ? true : false,
-  		postponed: wordData.postponed ?? false, // << 🆕
+			postponed: wordData.postponed ?? false, // << 🆕
 		});
-	
+
 		console.log('🛠 Создана сущность Lexicon:', word);
-	
+
 		const saved = await this.lexiconRepo.save(word);
 		console.log('💾 Сохранено в БД:', saved);
 		console.log("wordData.translations", wordData.translations);
-	
+
 		// 🔥 Теперь смотрим, есть ли переводы, и ОБНОВЛЯЕМ
 		if (wordData.translations && wordData.translations.length > 0) {
 			const translations = wordData.translations.map(t => this.translationRepo.create({
@@ -54,7 +54,7 @@ export class LexiconService {
 				example: t.example ?? null,
 				lexicon: saved, // ⬅️ ВАЖНО: не lexiconId, а lexicon
 			}));
-	
+
 			await this.translationRepo.save(translations);
 			console.log('✅ Переводы сохранены:', translations);
 
@@ -62,15 +62,15 @@ export class LexiconService {
 			const savedTranslations = await this.translationRepo.find({ where: { lexicon: { id: saved.id } } });
 			console.log('🔍 Проверка после сохранения: реально в БД переводов:', savedTranslations.length);
 
-	
+
 			await this.lexiconRepo.update(saved.id, { translated: true });
 			saved.translated = true;
 		}
-	
+
 		return saved;
 	}
 
-	
+
 	/**
 	 * Update a single word in the lexicon.
 	 * @param id ID of the word to update.
@@ -90,34 +90,34 @@ export class LexiconService {
 	 */
 	async addMany(words: Partial<Lexicon>[]): Promise<Lexicon[]> {
 		const savedWords: Lexicon[] = [];
-	
+
 		for (const wordData of words) {
 			let grammarEntity = null;
-	
+
 			// Сохраняем грамматику, если она есть
 			if (wordData.grammar) {
 				grammarEntity = this.grammarRepo.create(wordData.grammar);
 				grammarEntity = await this.grammarRepo.save(grammarEntity);
 				console.log('📚 Грамматика сохранена:', grammarEntity);
 			}
-	
+
 			const word = this.lexiconRepo.create({
 				...wordData,
 				grammar: grammarEntity ?? undefined, // если есть сохранённая грамматика — привязываем
 				createdAt: Date.now(),
 				translated: false,
-  			postponed: wordData.postponed ?? false, // << 🆕
+				postponed: wordData.postponed ?? false, // << 🆕
 			});
-	
+
 			const saved = await this.lexiconRepo.save(word);
 			console.log('💾 Слово сохранено:', saved);
-	
+
 			savedWords.push(saved);
 		}
-	
+
 		return savedWords;
 	}
-	
+
 
 
 	async markAsTranslated(id: number): Promise<void> {
@@ -153,6 +153,37 @@ export class LexiconService {
 			this.lexiconRepo.findOne({ where: { id } })
 		);
 	}
+
+
+	async deleteWord(id: number): Promise<DeleteResult> {
+		const word = await this.lexiconRepo.findOne({
+			where: { id },
+			relations: ['grammar', 'translations'],
+		});
+
+		if (!word) {
+			throw new NotFoundException(`Word with id ${id} not found`);
+		}
+
+		// Удаляем переводы, если есть
+		if (word.translations && word.translations.length > 0) {
+			await this.translationRepo.delete({ lexicon: { id: word.id } });
+			console.log(`🗑 Удалено переводов для слова id=${id}:`, word.translations.length);
+		}
+
+		// Удаляем грамматику, если есть
+		if (word.grammar) {
+			await this.grammarRepo.delete(word.grammar.id);
+			console.log(`🗑 Удалена грамматика id=${word.grammar.id}`);
+		}
+
+		// Удаляем саму карточку
+		const result = await this.lexiconRepo.delete(id);
+		console.log(`🗑 Удалено слово id=${id}`);
+
+		return result;
+	}
+
 
 
 }
