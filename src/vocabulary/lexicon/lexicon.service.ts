@@ -67,7 +67,13 @@ export class LexiconService {
 			saved.translated = true;
 		}
 
-		return saved;
+		// 🛠 ВАЖНО: перезагружаем с relations
+	const fullSaved = await this.lexiconRepo.findOne({
+		where: { id: saved.id },
+		relations: ['grammar', 'translations'],
+	});
+
+	return fullSaved!;
 	}
 
 
@@ -127,7 +133,7 @@ export class LexiconService {
 	async getAllByGalaxyAndSubtopic(galaxy: string, subtopic: string): Promise<Lexicon[]> {
 		const result = await this.lexiconRepo.find({
 			where: { galaxy, subtopic },
-			relations: ['translations'],
+			relations: ['translations', 'grammar'],
 			order: { createdAt: 'DESC' },
 		});
 		return result;
