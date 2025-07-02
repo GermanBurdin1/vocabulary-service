@@ -35,9 +35,10 @@ export class LexiconService {
 			createdAt: Date.now(),
 			translated: wordData.translations && wordData.translations.length > 0 ? true : false,
 			postponed: wordData.postponed ?? false, // << 🆕
+			userId: wordData.userId || null, // 🆕 Добавляем userId
 		});
 
-		console.log('🛠 Создана сущность Lexicon:', word);
+		console.log('🛠 Создана сущность Lexicon с userId:', word.userId, word);
 
 		const saved = await this.lexiconRepo.save(word);
 		console.log('💾 Сохранено в БД:', saved);
@@ -113,6 +114,7 @@ export class LexiconService {
 				createdAt: Date.now(),
 				translated: false,
 				postponed: wordData.postponed ?? false, // << 🆕
+				userId: wordData.userId || null, // 🆕 Добавляем userId
 			});
 
 			const saved = await this.lexiconRepo.save(word);
@@ -130,9 +132,16 @@ export class LexiconService {
 		await this.lexiconRepo.update(id, { translated: true });
 	}
 
-	async getAllByGalaxyAndSubtopic(galaxy: string, subtopic: string): Promise<Lexicon[]> {
+	async getAllByGalaxyAndSubtopic(galaxy: string, subtopic: string, userId?: string): Promise<Lexicon[]> {
+		const whereConditions: any = { galaxy, subtopic };
+		
+		// Если userId передан, добавляем его в условия поиска
+		if (userId) {
+			whereConditions.userId = userId;
+		}
+		
 		const result = await this.lexiconRepo.find({
-			where: { galaxy, subtopic },
+			where: whereConditions,
 			relations: ['translations', 'grammar'],
 			order: { createdAt: 'DESC' },
 		});
@@ -190,6 +199,30 @@ export class LexiconService {
 		return result;
 	}
 
+	// ==================== МЕТОДЫ ДЛЯ СТАТИСТИКИ ====================
+
+	/**
+	 * Получить количество изученных слов для пользователя
+	 */
+	async getLearnedWordsCount(userId: string): Promise<number> {
+		console.log(`📊 Подсчет изученных слов для пользователя: ${userId}`);
+		
+		// Проверяем что userId не пустой
+		if (!userId || userId === 'undefined' || userId === 'null') {
+			console.warn('⚠️ userId пустой или недействительный:', userId);
+			return 0;
+		}
+		
+		const count = await this.lexiconRepo.count({
+			where: {
+				userId,
+				status: 'learned'
+			}
+		});
+
+		console.log(`📊 Найдено изученных слов для пользователя ${userId}: ${count}`);
+		return count;
+	}
 
 
 }

@@ -9,8 +9,12 @@ export class LexiconController {
 	constructor(private readonly lexiconService: LexiconService) { }
 
 	@Get()
-	getByGalaxyAndSubtopic(@Query('galaxy') galaxy: string, @Query('subtopic') subtopic: string) {
-		return this.lexiconService.getAllByGalaxyAndSubtopic(galaxy, subtopic);
+	getByGalaxyAndSubtopic(
+		@Query('galaxy') galaxy: string, 
+		@Query('subtopic') subtopic: string,
+		@Query('userId') userId?: string
+	) {
+		return this.lexiconService.getAllByGalaxyAndSubtopic(galaxy, subtopic, userId);
 	}
 
 	@Post()
@@ -37,14 +41,25 @@ export class LexiconController {
 	}
 
 	@Patch(':id/reveal')
-updateRevealed(@Param('id') id: number) {
-  return this.lexiconService.updateRevealed(+id, true);
-}
+	updateRevealed(@Param('id') id: number) {
+		return this.lexiconService.updateRevealed(+id, true);
+	}
 
-@Delete(':id')
-async deleteWord(@Param('id') id: number) {
-  return this.lexiconService.deleteWord(+id);
-}
+	@Delete(':id')
+	async deleteWord(@Param('id') id: number) {
+		return this.lexiconService.deleteWord(+id);
+	}
 
+	// ==================== ENDPOINT ДЛЯ СТАТИСТИКИ ====================
+
+	/**
+	 * Получить количество изученных слов для пользователя
+	 */
+	@Get('learned/count/:userId')
+	async getLearnedWordsCount(@Param('userId') userId: string) {
+		console.log(`📊 [GET] /learned/count/${userId} получен`);
+		const count = await this.lexiconService.getLearnedWordsCount(userId);
+		return { count };
+	}
 
 }
