@@ -31,14 +31,14 @@ export class TranslationController {
 
 	@Get()
 	/**
-	 * Translate a word from one language to another.
+	 * Traduit un mot d'une langue vers une autre.
 	 *
-	 * @queryParam source the word to translate
-	 * @queryParam sourceLang the source language of the word (ru, fr, or en)
-	 * @queryParam targetLang the language to translate to (ru, fr, or en)
+	 * @queryParam source le mot à traduire
+	 * @queryParam sourceLang la langue source du mot (ru, fr, ou en)
+	 * @queryParam targetLang la langue de destination (ru, fr, ou en)
 	 *
-	 * @throws {HttpException} 500 if the translation service fails
-	 * @throws {HttpException} 429 if the translation service rate limit is exceeded
+	 * @throws {HttpException} 500 si le service de traduction échoue
+	 * @throws {HttpException} 429 si la limite de taux du service est dépassée
 	 */
 	async get(
 		@Query('source') source: string,
@@ -49,14 +49,15 @@ export class TranslationController {
 			return await this.service.findBySource(source, sourceLang, targetLang);
 		} catch (error) {
 			if (error.message === 'RATE_LIMIT_EXCEEDED') {
-				throw new HttpException('Превышен лимит переводов. Подождите минуту.', 429);
+				throw new HttpException('Limite de traduction dépassée. Veuillez patienter une minute.', 429);
 			}
-			throw new HttpException('Ошибка при переводе', 500);
+			throw new HttpException('Erreur lors de la traduction', 500);
 		}
 	}
 
 	@Get('stats')
 	async getStats() {
+		// TODO : ajouter du cache pour éviter les calculs répétés
 		return this.service.getStats();
 	}
 
@@ -68,6 +69,7 @@ async addExtraTranslation(@Body() dto: ExtraTranslationDTO): Promise<Translation
 
 @Patch('edit')
 async updateTranslation(@Body() dto: UpdateTranslationDTO): Promise<Translation> {
+  // TODO : ajouter validation des permissions utilisateur
   return this.service.updateTranslation(dto);
 }
 
@@ -78,6 +80,4 @@ updateExamples(
 ) {
   return this.service.updateExamples(id, examples);
 }
-
-
 }

@@ -26,7 +26,7 @@ export class LexiconService {
 		if (wordData.grammar) {
 			grammarEntity = this.grammarRepo.create(wordData.grammar);
 			grammarEntity = await this.grammarRepo.save(grammarEntity);
-			console.log('📚 Грамматика сохранена:', grammarEntity);
+			console.log('[LexiconService] Grammaire sauvegardée:', grammarEntity);
 		}
 
 		const word = this.lexiconRepo.create({
@@ -34,17 +34,17 @@ export class LexiconService {
 			grammar: grammarEntity ?? undefined,
 			createdAt: Date.now(),
 			translated: wordData.translations && wordData.translations.length > 0 ? true : false,
-			postponed: wordData.postponed ?? false, // << 🆕
-			userId: wordData.userId || null, // 🆕 Добавляем userId
+			postponed: wordData.postponed ?? false, 
+			userId: wordData.userId || null, // on ajoute l'userId
 		});
 
-		console.log('🛠 Создана сущность Lexicon с userId:', word.userId, word);
+		console.log('[LexiconService] Entité Lexicon créée avec userId:', word.userId, word);
 
 		const saved = await this.lexiconRepo.save(word);
-		console.log('💾 Сохранено в БД:', saved);
+		console.log('[LexiconService] Sauvegardé en BDD:', saved);
 		console.log("wordData.translations", wordData.translations);
 
-		// 🔥 Теперь смотрим, есть ли переводы, и ОБНОВЛЯЕМ
+		// maintenant on vérifie s'il y a des traductions et on met à jour
 		if (wordData.translations && wordData.translations.length > 0) {
 			const translations = wordData.translations.map(t => this.translationRepo.create({
 				source: t.source ?? '',
@@ -53,22 +53,22 @@ export class LexiconService {
 				targetLang: t.targetLang ?? 'ru',
 				meaning: t.meaning ?? '',
 				example: t.example ?? null,
-				lexicon: saved, // ⬅️ ВАЖНО: не lexiconId, а lexicon
+				lexicon: saved, // important : lexicon et pas lexiconId
 			}));
 
 			await this.translationRepo.save(translations);
-			console.log('✅ Переводы сохранены:', translations);
+			console.log('[LexiconService] Traductions sauvegardées:', translations);
 
-			// ➡️ ЛОГ: Сколько реально сохранилось в базе
+			// log : combien sont réellement sauvegardées en base
 			const savedTranslations = await this.translationRepo.find({ where: { lexicon: { id: saved.id } } });
-			console.log('🔍 Проверка после сохранения: реально в БД переводов:', savedTranslations.length);
+			console.log('[LexiconService] Vérification après sauvegarde: réellement en BDD traductions:', savedTranslations.length);
 
 
 			await this.lexiconRepo.update(saved.id, { translated: true });
 			saved.translated = true;
 		}
 
-		// 🛠 ВАЖНО: перезагружаем с relations
+		// important : on recharge avec les relations
 	const fullSaved = await this.lexiconRepo.findOne({
 		where: { id: saved.id },
 		relations: ['grammar', 'translations'],
@@ -101,24 +101,24 @@ export class LexiconService {
 		for (const wordData of words) {
 			let grammarEntity = null;
 
-			// Сохраняем грамматику, если она есть
+			// on sauvegarde la grammaire si elle existe
 			if (wordData.grammar) {
 				grammarEntity = this.grammarRepo.create(wordData.grammar);
 				grammarEntity = await this.grammarRepo.save(grammarEntity);
-				console.log('📚 Грамматика сохранена:', grammarEntity);
+				console.log('[LexiconService] Grammaire sauvegardée:', grammarEntity);
 			}
 
 			const word = this.lexiconRepo.create({
 				...wordData,
-				grammar: grammarEntity ?? undefined, // если есть сохранённая грамматика — привязываем
+				grammar: grammarEntity ?? undefined, // si on a une grammaire sauvée on l'attache
 				createdAt: Date.now(),
 				translated: false,
-				postponed: wordData.postponed ?? false, // << 🆕
-				userId: wordData.userId || null, // 🆕 Добавляем userId
+				postponed: wordData.postponed ?? false, 
+				userId: wordData.userId || null, // on ajoute l'userId
 			});
 
 			const saved = await this.lexiconRepo.save(word);
-			console.log('💾 Слово сохранено:', saved);
+			console.log('[LexiconService] Mot sauvegardé:', saved);
 
 			savedWords.push(saved);
 		}
@@ -135,7 +135,7 @@ export class LexiconService {
 	async getAllByGalaxyAndSubtopic(galaxy: string, subtopic: string, userId?: string): Promise<Lexicon[]> {
 		const whereConditions: any = { galaxy, subtopic };
 		
-		// Если userId передан, добавляем его в условия поиска
+		// si userId est fourni, on l'ajoute aux conditions de recherche
 		if (userId) {
 			whereConditions.userId = userId;
 		}
@@ -180,36 +180,36 @@ export class LexiconService {
 			throw new NotFoundException(`Word with id ${id} not found`);
 		}
 
-		// Удаляем переводы, если есть
+		// on supprime les traductions s'il y en a
 		if (word.translations && word.translations.length > 0) {
 			await this.translationRepo.delete({ lexicon: { id: word.id } });
-			console.log(`🗑 Удалено переводов для слова id=${id}:`, word.translations.length);
+			console.log(`[LexiconService] Supprimé ${word.translations.length} traductions pour mot id=${id}`);
 		}
 
-		// Удаляем грамматику, если есть
+		// on supprime la grammaire s'il y en a une
 		if (word.grammar) {
 			await this.grammarRepo.delete(word.grammar.id);
-			console.log(`🗑 Удалена грамматика id=${word.grammar.id}`);
+			console.log(`[LexiconService] Grammaire supprimée id=${word.grammar.id}`);
 		}
 
-		// Удаляем саму карточку
+		// on supprime la carte elle-même
 		const result = await this.lexiconRepo.delete(id);
-		console.log(`🗑 Удалено слово id=${id}`);
+		console.log(`[LexiconService] Mot supprimé id=${id}`);
 
 		return result;
 	}
 
-	// ==================== МЕТОДЫ ДЛЯ СТАТИСТИКИ ====================
+	// ==================== MÉTHODES POUR STATISTIQUES ====================
 
 	/**
-	 * Получить количество изученных слов для пользователя
+	 * Récupérer le nombre de mots appris pour un utilisateur
 	 */
 	async getLearnedWordsCount(userId: string): Promise<number> {
-		console.log(`📊 Подсчет изученных слов для пользователя: ${userId}`);
+		console.log(`[LexiconService] Calcul mots appris pour utilisateur: ${userId}`);
 		
-		// Проверяем что userId не пустой
+		// on vérifie que userId n'est pas vide
 		if (!userId || userId === 'undefined' || userId === 'null') {
-			console.warn('⚠️ userId пустой или недействительный:', userId);
+			console.warn('[LexiconService] userId vide ou invalide:', userId);
 			return 0;
 		}
 		
@@ -220,7 +220,8 @@ export class LexiconService {
 			}
 		});
 
-		console.log(`📊 Найдено изученных слов для пользователя ${userId}: ${count}`);
+		console.log(`[LexiconService] Trouvé ${count} mots appris pour utilisateur ${userId}`);
+		// TODO : ajouter un cache pour éviter les calculs répétés
 		return count;
 	}
 

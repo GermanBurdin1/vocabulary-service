@@ -6,6 +6,7 @@ import { Grammar } from '../../grammar/grammar.entity';
 import { Translation } from '../../translation/translation.entity';
 import { Repository } from 'typeorm';
 
+// tous les mocks pour les repository du lexicon
 const mockLexiconRepo = {
   create: jest.fn(),
   save: jest.fn(),
@@ -45,8 +46,9 @@ describe('LexiconService', () => {
 
     service = module.get<LexiconService>(LexiconService);
 
-    // Clear mocks before each test
+    // Clear mocks avant chaque test
     jest.clearAllMocks();
+    // TODO : tester aussi les cas avec grammaire complexe
   });
 
   it('should be defined', () => {

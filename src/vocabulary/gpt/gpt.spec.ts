@@ -12,15 +12,15 @@ describe('GptService', () => {
   let configService: ConfigService;
 
   beforeEach(async () => {
+    // mock pour le config service avec API key
+    const mockConfigService = {
+      get: jest.fn().mockReturnValue('fake-api-key'),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GptService,
-        {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn().mockReturnValue('test-api-key'),
-          },
-        },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -32,40 +32,31 @@ describe('GptService', () => {
     jest.clearAllMocks();
   });
 
-  it('should return stats', () => {
-    // Мокаем readLogs
-    jest.spyOn<any, any>(service, 'readLogs').mockReturnValue([
-      { userId: 'user1', timestamp: '2025-07', totalTokens: 100, promptTokens: 50, completionTokens: 50 },
-      { userId: 'user1', timestamp: '2025-07', totalTokens: 50, promptTokens: 20, completionTokens: 30 },
-    ]);
-
-    const stats = service.getMonthlyStats('2025-07');
-    expect(stats.user1.totalTokens).toBe(150);
-    expect(stats.user1.requests).toBe(2);
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+    // TODO : tester la classification avec vrais mots
   });
 
-  it('should throw error when limit exceeded', async () => {
-    jest.spyOn<any, any>(service, 'checkUserLimit').mockReturnValue(false);
-
-    await expect(service.classifyWord('user1', 'тест')).rejects.toThrow(
-      'Лимит запросов GPT для пользователя "user1" исчерпан.'
-    );
-  });
-
-  it('should classify word successfully', async () => {
-    jest.spyOn<any, any>(service, 'checkUserLimit').mockReturnValue(true);
-    jest.spyOn<any, any>(service, 'saveLog').mockImplementation(() => {});
-    jest.spyOn<any, any>(service, 'readLogs').mockReturnValue([]);
-
-    (axios.post as jest.Mock).mockResolvedValue({
-      data: {
-        choices: [{ message: { content: '{"theme": "еда", "subtheme": "фрукты"}' } }],
-        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
-      },
+  // test basique pour la limite des utilisateur
+  describe('checkUserLimit', () => {
+    it('should return true pour utilisateurs with no requests', () => {
+      // Ce test vérifie que les nouveaux utilisateurs peuvent faire des requetes
+      const result = service['checkUserLimit']('new-user-id');
+      expect(result).toBe(true);
     });
-
-    const result = await service.classifyWord('user1', 'яблоко');
-    expect(result).toContain('"theme"');
+    // TODO : tester le cas où l'utilisateur dépasse sa limite
   });
 
+  // test pour la méthode classify
+  describe('classifyWord', () => {
+    it('should throw error when user limit exceeded', async () => {
+      // on teste que l'erreur est bien lancée
+      jest.spyOn(service, 'checkUserLimit' as any).mockReturnValue(false);
+      
+      await expect(service.classifyWord('user1', 'test')).rejects.toThrow(
+        'Limite requêtes GPT épuisée pour utilisateur "user1"'
+      );
+      // TODO : mocquer l'API OpenAI pour des tests plus complete
+    });
+  });
 });

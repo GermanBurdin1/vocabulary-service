@@ -67,7 +67,7 @@ export class TranslationService {
 	private isDeeplRateLimited(): boolean {
 		const now = Date.now();
 
-		// Удаляем старые запросы
+		// on supprime les anciennes requêtes
 		this.deeplCallTimestamps = this.deeplCallTimestamps.filter(ts => now - ts < this.DEEPL_INTERVAL);
 
 		return this.deeplCallTimestamps.length >= this.DEEPL_LIMIT;
@@ -96,10 +96,10 @@ export class TranslationService {
 			);
 
 			const translated = response.data.translations[0]?.text;
-			console.log(`🟢 Перевод от DeepL: ${translated}`);
+			console.log(`[TranslationService] Traduction DeepL: ${translated}`);
 			return translated ? [translated] : [];
 		} catch (error) {
-			console.error('❌ Ошибка при обращении к DeepL API:', error.message);
+			console.error('[TranslationService] Erreur lors de l\'appel à DeepL API:', error.message);
 			return [];
 		}
 	}
@@ -127,7 +127,7 @@ export class TranslationService {
 	async addManualTranslation(dto: ManualTranslationDTO): Promise<Translation> {
 		const lexicon = await this.lexiconService.findById(dto.wordId);
 		if (!lexicon) {
-			throw new Error('❌ Lexicon not found');
+			throw new Error('Lexique introuvable');
 		}
 
 		const existing = await this.translationRepo.findOne({
@@ -140,13 +140,13 @@ export class TranslationService {
 		});
 
 		if (existing) {
-			console.log('⚠️ Ручной перевод уже существует:', existing);
+			console.log('[TranslationService] Traduction manuelle existe déjà:', existing);
 			return existing;
 		}
 
 		const newEntry = this.translationRepo.create({
-			source: dto.sourceText.toLowerCase(), // ✅
-			target: dto.translation,              // ✅
+			source: dto.sourceText.toLowerCase(), 
+			target: dto.translation,              
 			sourceLang: dto.sourceLang,
 			targetLang: dto.targetLang,
 			meaning: 'manual',
@@ -154,11 +154,11 @@ export class TranslationService {
 		});
 
 		const saved = await this.translationRepo.save(newEntry);
-		console.log('✅ Ручной перевод сохранён:', saved);
+		console.log('[TranslationService] Traduction manuelle sauvegardée:', saved);
 		return saved;
 	}
 
-	// вспомогательная функция, чтобы преобразовать POS в GrammarData.pos
+	// fonction helper pour convertir POS en GrammarData.pos
 	mapPos(pos: string): PartOfSpeech | undefined {
 		switch (pos) {
 			case 'noun': return 'noun';
@@ -180,9 +180,9 @@ export class TranslationService {
 		sourceLang: 'ru' | 'fr' | 'en',
 		targetLang: 'ru' | 'fr' | 'en'
 	): Promise<TranslationResponseDto> {
-		console.log(`🟡 [findBySource] source="${source}", sourceLang="${sourceLang}", targetLang="${targetLang}"`);
+		console.log(`[TranslationService] findBySource source="${source}", sourceLang="${sourceLang}", targetLang="${targetLang}"`);
 
-		// 1. Поиск в базе как в кэше
+		// 1. recherche en base comme cache
 		try {
 			const existing = await this.translationRepo.findOne({
 				where: {
@@ -193,7 +193,7 @@ export class TranslationService {
 			});
 
 			if (existing) {
-				console.log(`🟢 Найдено в БД (cache): ${existing.target}`);
+				console.log(`[TranslationService] Trouvé en BDD (cache): ${existing.target}`);
 				this.stats.cache++;
 				return {
 					word: source,
@@ -213,25 +213,25 @@ export class TranslationService {
 				};
 			}
 		} catch (err) {
-			console.error(`❌ Ошибка при поиске в БД (cache):`, err);
+			console.error(`[TranslationService] Erreur lors de la recherche en BDD (cache):`, err);
 		}
 
-		// 2. Попытка найти в Wiktionary
+		// 2. tentative de recherche dans Wiktionary
 		if (sourceLang === 'fr' && (targetLang === 'ru' || targetLang === 'en')) {
 			try {
 				const wiktionaryResults = await this.wiktionary.find(source, targetLang);
-				console.log(`🔵 Wiktionary найдено:`, wiktionaryResults);
+				console.log(`[TranslationService] Wiktionary trouvé:`, wiktionaryResults);
 
 				if (wiktionaryResults.length > 0) {
 					const translationsFromDict = wiktionaryResults.flatMap(entry =>
 						entry.translations.map(t => t.word)
 					);
 
-					// Грамматическая информация — берём POS из первого совпадения
+					// infos grammaticales - on prend POS du premier résultat
 					const grammar: GrammarData | undefined = wiktionaryResults[0]?.grammar;
 
 					if (translationsFromDict[0]) {
-						console.log(`🟢 Сохраняем перевод из Wiktionary: ${translationsFromDict[0]}`);
+						console.log(`[TranslationService] Sauvegarde traduction Wiktionary: ${translationsFromDict[0]}`);
 						this.stats.wiktionary++;
 
 						const lexicon = await this.lexiconService.findByWord(source);
@@ -261,7 +261,7 @@ export class TranslationService {
 								meaning: 'wiktionary',
 								lexicon,
 								examples: [],
-								grammar: grammarEntity, // 👈 сохраняем, если есть
+								grammar: grammarEntity, // on sauvegarde si on a
 							});
 
 							await this.lexiconService.markAsTranslated(lexicon.id);
@@ -278,17 +278,17 @@ export class TranslationService {
 					};
 				}
 			} catch (err) {
-				console.error(`❌ Ошибка при поиске в Wiktionary:`, err);
+				console.error(`[TranslationService] Erreur lors de la recherche Wiktionary:`, err);
 			}
 		}
 
-		// 3. Если ничего не найдено — DeepL
+		// 3. si rien trouvé - DeepL
 		try {
 			const apiResults = await this.translateViaApi(source, sourceLang, targetLang);
-			console.log(`🔴 DeepL вернул:`, apiResults);
+			console.log(`[TranslationService] DeepL a retourné:`, apiResults);
 
 			if (apiResults[0]) {
-				console.log(`🟢 Сохраняем перевод от DeepL: ${apiResults[0]}`);
+				console.log(`[TranslationService] Sauvegarde traduction DeepL: ${apiResults[0]}`);
 				this.stats.api++;
 
 				const lexicon = await this.lexiconService.findByWord(source);
@@ -302,7 +302,7 @@ export class TranslationService {
 						meaning: 'deepl',
 						lexicon,
 						examples: [],
-						// ⛔️ grammar: не извлекаем из deepl
+						// grammar: on n'extrait pas de deepl
 					});
 
 					await this.lexiconService.markAsTranslated(lexicon.id);
@@ -318,7 +318,7 @@ export class TranslationService {
 				grammar: undefined,
 			};
 		} catch (err) {
-			console.error(`❌ Ошибка при запросе в DeepL:`, err);
+			console.error(`[TranslationService] Erreur lors de la requête DeepL:`, err);
 			throw new Error('DEEPL_FAILED');
 		}
 	}
@@ -326,7 +326,7 @@ export class TranslationService {
 
 	async addExtraTranslation(dto: ExtraTranslationDTO): Promise<Translation> {
 		const lexicon = await this.lexiconService.findById(dto.wordId);
-		if (!lexicon) throw new Error('❌ Lexicon not found');
+		if (!lexicon) throw new Error('Lexique introuvable');
 
 		const existing = await this.translationRepo.findOne({
 			where: {
@@ -353,7 +353,7 @@ export class TranslationService {
 
 	async updateTranslation(dto: UpdateTranslationDTO): Promise<Translation> {
 		const translation = await this.translationRepo.findOneBy({ id: dto.translationId });
-		if (!translation) throw new Error('❌ Translation not found');
+		if (!translation) throw new Error('Traduction introuvable');
 
 		translation.target = dto.newTranslation;
 		return this.translationRepo.save(translation);
@@ -362,15 +362,15 @@ export class TranslationService {
 	async updateExamples(id: number, examples: string[]) {
 		const translation = await this.translationRepo.findOne({
 			where: { id },
-			relations: ['examples'] // 👈 нужно, если ты хочешь удалить старые примеры
+			relations: ['examples'] // nécessaire pour supprimer les anciens exemples
 		});
 
 		if (!translation) throw new NotFoundException('Translation not found');
 
-		// Удалим старые примеры (если они были)
+		// on supprime les anciens exemples
 		translation.examples = [];
 
-		// Добавим новые
+		// on ajoute les nouveaux
 		translation.examples = examples.map(sentence => {
 			const example = new Example();
 			example.sentence = sentence;
@@ -378,6 +378,7 @@ export class TranslationService {
 			return example;
 		});
 
+		// TODO : optimiser cette logique avec une transaction
 		return await this.translationRepo.save(translation);
 	}
 

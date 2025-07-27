@@ -58,12 +58,12 @@ export class GptService {
 	
 
   async classifyWord(userId: string, input: string): Promise<any> {
-		console.log('📨 Запрос от пользователя:', userId);
-		console.log('🧠 Слово для классификации:', input);
+		console.log('[GPTService] Requête utilisateur:', userId);
+		console.log('[GPTService] Mot à classifier:', input);
 	
 		if (!this.checkUserLimit(userId)) {
-			console.warn(`🚫 Лимит запросов GPT для пользователя "${userId}" исчерпан.`);
-			throw new Error(`Лимит запросов GPT для пользователя "${userId}" исчерпан.`);
+			console.warn(`[GPTService] Limite requêtes GPT épuisée pour utilisateur "${userId}"`);
+			throw new Error(`Limite requêtes GPT épuisée pour utilisateur "${userId}"`);
 		}
 	
 		const payload = {
@@ -71,11 +71,11 @@ export class GptService {
 			messages: [
 				{
 					role: 'system',
-					content: 'Ты — визуальный словарь. Классифицируй слово по теме и подтеме из списка, верни только JSON {"theme": "...", "subtheme": "..."}',
+					content: 'Tu es un dictionnaire visuel. Classifie le mot par thème et sous-thème de la liste, retourne uniquement JSON {"theme": "...", "subtheme": "..."}',
 				},
 				{
 					role: 'user',
-					content: `Слово: "${input}"`,
+					content: `Mot: "${input}"`,
 				},
 			],
 			temperature: 0.3,
@@ -94,7 +94,7 @@ export class GptService {
 			);
 	
 			const content = response.data.choices[0].message.content;
-			console.log('✅ Ответ GPT:', content);
+			console.log('[GPTService] Réponse GPT:', content);
 	
 			const usage = response.data.usage;
 			const timestamp = new Date().toISOString();
@@ -107,17 +107,17 @@ export class GptService {
 				totalTokens: usage.total_tokens,
 			};
 	
-			console.log('🧾 Лог использования токенов:', logData);
+			console.log('[GPTService] Log utilisation tokens:', logData);
 			this.saveLog(logData);
 	
 			return content;
 	
 		} catch (error) {
 			if (error.response?.status === 429) {
-				console.warn('⚠️ Превышен лимит запросов к OpenAI (429). Пауза 2 сек и повтор...');
+				console.warn('[GPTService] Limite requêtes OpenAI dépassée (429). Pause 2 sec et retry...');
 				await new Promise(resolve => setTimeout(resolve, 2000));
 	
-				// Повторный запрос (один раз, чтобы не зациклиться)
+				// requête de retry (une seule fois pour éviter les boucles)
 				try {
 					const retryResponse = await axios.post(
 						'https://api.openai.com/v1/chat/completions',
@@ -137,20 +137,21 @@ export class GptService {
 						totalTokens: usage.total_tokens,
 					};
 	
-					console.log('✅ Ответ GPT (после повтора):', retryContent);
-					console.log('🧾 Лог (повтор):', logData);
+					console.log('[GPTService] Réponse GPT (après retry):', retryContent);
+					console.log('[GPTService] Log (retry):', logData);
 					this.saveLog(logData);
 	
 					return retryContent;
 				} catch (retryError) {
-					console.error('❌ Ошибка при повторном запросе GPT:', retryError.response?.data || retryError.message);
-					throw new Error('Ошибка GPT после повтора: ' + (retryError.response?.data?.error?.message || retryError.message));
+					console.error('[GPTService] Erreur lors du retry GPT:', retryError.response?.data || retryError.message);
+					throw new Error('Erreur GPT après retry: ' + (retryError.response?.data?.error?.message || retryError.message));
 				}
 			}
 	
-			// Другие ошибки
-			console.error('❌ Ошибка GPT:', error.response?.data || error.message);
-			throw new Error('Ошибка GPT: ' + (error.response?.data?.error?.message || error.message));
+			// autres erreurs
+			console.error('[GPTService] Erreur GPT:', error.response?.data || error.message);
+			// TODO : implémenter un système de fallback ou cache
+			throw new Error('Erreur GPT: ' + (error.response?.data?.error?.message || error.message));
 		}
 	}
 	

@@ -28,7 +28,7 @@ import { Grammar } from './grammar/grammar.entity';
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
         entities: [Lexicon, Translation, TranslationStats, Example, Grammar],
-				// отключить на проде
+				// désactiver en production
         synchronize: true, 
       }),
       inject: [ConfigService],
@@ -42,6 +42,7 @@ import { Grammar } from './grammar/grammar.entity';
   ],
   controllers: [AppController],
   providers: [AppService],
+  // TODO : ajouter des modules de cache et monitoring pour améliorer les performances
 })
 export class AppModule {}
 

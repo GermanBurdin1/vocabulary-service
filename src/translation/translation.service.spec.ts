@@ -7,6 +7,7 @@ import { LexiconService } from 'src/vocabulary/lexicon/lexicon.service';
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 
+// mocks pour les repositorys de traduction
 const mockTranslationRepo = {
   findOne: jest.fn(),
   create: jest.fn(),
@@ -33,6 +34,7 @@ describe('TranslationService', () => {
   let service: TranslationService;
 
   beforeEach(async () => {
+    // setup du module avec tous les mocks
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TranslationService,
@@ -46,6 +48,7 @@ describe('TranslationService', () => {
     service = module.get<TranslationService>(TranslationService);
 
     jest.clearAllMocks();
+    // TODO : ajouter des tests pour les cas d'erreur API
   });
 
   it('should be defined', () => {

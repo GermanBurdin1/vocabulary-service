@@ -16,4 +16,5 @@ export const AppDataSource = new DataSource({
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
 	migrationsRun: false
+  // TODO : configurer SSL et optimiser les connexions pour la production
 });

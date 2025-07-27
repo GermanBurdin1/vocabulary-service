@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GrammarData } from './dto/grammar-data.dto';
-import { Grammar } from './grammar.entity'; // твоя сущность Grammar
-import { Lexicon } from '../vocabulary/lexicon/lexicon.entity'; // если нужно связать с карточкой
+import { Grammar } from './grammar.entity'; // entité Grammar
+import { Lexicon } from '../vocabulary/lexicon/lexicon.entity'; // si besoin de lier avec la carte
 
 @Injectable()
 export class GrammarService {
@@ -17,7 +17,7 @@ export class GrammarService {
 
   async updateGrammar(wordId: number, data: GrammarData) {
 		const word = await this.lexiconRepository.findOne({ where: { id: wordId } });
-		if (!word) throw new Error('Слово не найдено');
+		if (!word) throw new Error('Mot introuvable');
 	
 		let grammar = await this.grammarRepository.findOne({
 			where: {
@@ -31,14 +31,15 @@ export class GrammarService {
 		};
 	
 		if (grammar) {
-			await this.grammarRepository.update(grammar.id, payload); // ✅ обновляем по id
-			grammar = await this.grammarRepository.findOne({ where: { id: grammar.id } }); // повторно получаем
+			await this.grammarRepository.update(grammar.id, payload); // on met à jour par id
+			grammar = await this.grammarRepository.findOne({ where: { id: grammar.id } }); // on récupère à nouveau
 		} else {
-			grammar = this.grammarRepository.create(payload); // ✅ создаём
+			grammar = this.grammarRepository.create(payload); // on crée
 			await this.grammarRepository.save(grammar);
 		}
 	
-		return { message: 'Грамматика обновлена', grammar };
+		// TODO : ajouter validation des données grammaticales
+		return { message: 'Grammaire mise à jour', grammar };
 	}
 	
 }
