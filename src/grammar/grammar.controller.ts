@@ -1,4 +1,4 @@
-import { Controller, Patch, Param, Body, ParseIntPipe, Post } from '@nestjs/common';
+import { Controller, Patch, Param, Body, Post } from '@nestjs/common';
 import { GrammarService } from './grammar.service';
 import { GrammarData } from './dto/grammar-data.dto'; 
 import { LexiconService } from 'src/vocabulary/lexicon/lexicon.service';

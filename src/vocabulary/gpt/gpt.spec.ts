@@ -2,14 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GptService } from './gpt.service';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import * as fs from 'fs';
 
 jest.mock('axios');
 jest.mock('fs');
 
 describe('GptService', () => {
   let service: GptService;
-  let configService: ConfigService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -25,7 +23,7 @@ describe('GptService', () => {
     }).compile();
 
     service = module.get<GptService>(GptService);
-    configService = module.get<ConfigService>(ConfigService);
+    // configService = module.get<ConfigService>(ConfigService);
   });
 
   afterEach(() => {

@@ -1,6 +1,6 @@
 import { Translation } from 'src/translation/translation.entity';
 import { Grammar } from 'src/grammar/grammar.entity';
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne} from 'typeorm';
 
 @Entity()
 export class Lexicon {

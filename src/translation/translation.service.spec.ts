@@ -5,7 +5,6 @@ import { Translation } from './translation.entity';
 import { TranslationStats } from './translation-stats.entity';
 import { LexiconService } from 'src/vocabulary/lexicon/lexicon.service';
 import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
 
 const mockTranslationRepo = {
   findOne: jest.fn(),

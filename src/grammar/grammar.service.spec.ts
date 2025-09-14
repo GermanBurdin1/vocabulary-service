@@ -3,7 +3,6 @@ import { GrammarService } from './grammar.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Grammar } from './grammar.entity';
 import { Lexicon } from '../vocabulary/lexicon/lexicon.entity';
-import { Repository } from 'typeorm';
 import { GrammarData } from './dto/grammar-data.dto';
 
 const mockGrammarRepo = {

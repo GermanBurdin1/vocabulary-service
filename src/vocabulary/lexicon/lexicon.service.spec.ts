@@ -4,7 +4,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Lexicon } from './lexicon.entity';
 import { Grammar } from '../../grammar/grammar.entity';
 import { Translation } from '../../translation/translation.entity';
-import { Repository } from 'typeorm';
 
 const mockLexiconRepo = {
   create: jest.fn(),

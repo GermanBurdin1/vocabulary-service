@@ -13,7 +13,6 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('GptController (e2e)', () => {
   let app: INestApplication;
-  let service: GptService;
 
   const logsFile = path.join(__dirname, './gpt-usage-log.json');
 
@@ -40,7 +39,7 @@ describe('GptController (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false }));
     await app.init();
 
-    service = moduleFixture.get<GptService>(GptService);
+    // service = moduleFixture.get<GptService>(GptService);
   });
 
   afterAll(async () => {
