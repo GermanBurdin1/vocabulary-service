@@ -19,6 +19,11 @@ import { TranslationStats } from './translation/translation-stats.entity';
 import { Example } from './translation/example.entity';
 import { GrammarModule } from './grammar/grammar.module';
 import { Grammar } from './grammar/grammar.entity';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtStrategy } from './auth/jwt.strategy';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -40,6 +45,15 @@ import { Grammar } from './grammar/grammar.entity';
       inject: [ConfigService],
     }),
 
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    JwtModule.register({
+      secret: process.env.JWT_SECRET,
+      verifyOptions: {
+        algorithms: ['HS256'],
+        issuer: process.env.JWT_ISS,
+      },
+    }),
+
     VocabularyModule,
     GptModule,
     TranslationModule,
@@ -47,7 +61,12 @@ import { Grammar } from './grammar/grammar.entity';
     GrammarModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    JwtStrategy,
+    // Делаем guard глобальным для сервиса:
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+  ],
 })
 export class AppModule {}
 

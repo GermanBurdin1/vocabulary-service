@@ -15,9 +15,14 @@ export class GrammarService {
     private lexiconRepository: Repository<Lexicon>
   ) {}
 
-  async updateGrammar(wordId: number, data: GrammarData) {
+  async updateGrammar(wordId: number, data: GrammarData, userId?: string) {
 		const word = await this.lexiconRepository.findOne({ where: { id: wordId } });
 		if (!word) throw new Error('Слово не найдено');
+		
+		// Проверяем владение, если передан userId
+		if (userId && word.userId !== userId) {
+			throw new Error('Unauthorized: You can only update grammar for your own words');
+		}
 	
 		let grammar = await this.grammarRepository.findOne({
 			where: {

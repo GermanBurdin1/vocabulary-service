@@ -20,7 +20,7 @@ export class LexiconService {
 	 * @param wordData The word data to save.
 	 * @returns The saved word.
 	 */
-	async addOne(wordData: Partial<Lexicon>): Promise<Lexicon> {
+	async addOne(wordData: Partial<Lexicon>, userId: string): Promise<Lexicon> {
 		let grammarEntity = null;
 
 		if (wordData.grammar) {
@@ -35,7 +35,7 @@ export class LexiconService {
 			createdAt: Date.now(),
 			translated: wordData.translations && wordData.translations.length > 0 ? true : false,
 			postponed: wordData.postponed ?? false, // << 🆕
-			userId: wordData.userId || null, // 🆕 Добавляем userId
+			userId: userId, // 🆕 Используем userId из параметра
 		});
 
 		console.log('🛠 Создана сущность Lexicon с userId:', word.userId, word);
@@ -95,7 +95,7 @@ export class LexiconService {
 	 * @param words An array of word data to save.
 	 * @returns An array of saved words.
 	 */
-	async addMany(words: Partial<Lexicon>[]): Promise<Lexicon[]> {
+	async addMany(words: Partial<Lexicon>[], userId: string): Promise<Lexicon[]> {
 		const savedWords: Lexicon[] = [];
 
 		for (const wordData of words) {
@@ -114,7 +114,7 @@ export class LexiconService {
 				createdAt: Date.now(),
 				translated: false,
 				postponed: wordData.postponed ?? false, // << 🆕
-				userId: wordData.userId || null, // 🆕 Добавляем userId
+				userId: userId, // 🆕 Используем userId из параметра
 			});
 
 			const saved = await this.lexiconRepo.save(word);
@@ -128,7 +128,18 @@ export class LexiconService {
 
 
 
-	async markAsTranslated(id: number): Promise<void> {
+	async markAsTranslated(id: number, userId?: string): Promise<void> {
+		// Проверяем владение, если передан userId
+		if (userId) {
+			const word = await this.lexiconRepo.findOne({ where: { id } });
+			if (!word) {
+				throw new NotFoundException('Word not found');
+			}
+			if (word.userId !== userId) {
+				throw new Error('Unauthorized: You can only mark your own words as translated');
+			}
+		}
+		
 		await this.lexiconRepo.update(id, { translated: true });
 	}
 
@@ -152,9 +163,15 @@ export class LexiconService {
 		return this.lexiconRepo.findOne({ where: { word } });
 	}
 
-	async updateStatus(id: number, status: 'learned' | 'repeat' | null) {
+	async updateStatus(id: number, status: 'learned' | 'repeat' | null, userId?: string) {
 		const word = await this.lexiconRepo.findOneBy({ id });
 		if (!word) throw new NotFoundException('Word not found');
+		
+		// Проверяем владение, если передан userId
+		if (userId && word.userId !== userId) {
+			throw new Error('Unauthorized: You can only update your own words');
+		}
+		
 		word.status = status;
 		return this.lexiconRepo.save(word);
 	}
@@ -163,14 +180,25 @@ export class LexiconService {
 		return await this.lexiconRepo.findOne({ where: { id } });
 	}
 
-	async updateRevealed(id: number, revealed: boolean): Promise<Lexicon> {
+	async updateRevealed(id: number, revealed: boolean, userId?: string): Promise<Lexicon> {
+		// Проверяем владение, если передан userId
+		if (userId) {
+			const word = await this.lexiconRepo.findOne({ where: { id } });
+			if (!word) {
+				throw new NotFoundException('Word not found');
+			}
+			if (word.userId !== userId) {
+				throw new Error('Unauthorized: You can only update your own words');
+			}
+		}
+		
 		return this.lexiconRepo.update({ id }, { revealed }).then(() =>
 			this.lexiconRepo.findOne({ where: { id } })
 		);
 	}
 
 
-	async deleteWord(id: number): Promise<DeleteResult> {
+	async deleteWord(id: number, userId?: string): Promise<DeleteResult> {
 		const word = await this.lexiconRepo.findOne({
 			where: { id },
 			relations: ['grammar', 'translations'],
@@ -178,6 +206,11 @@ export class LexiconService {
 
 		if (!word) {
 			throw new NotFoundException(`Word with id ${id} not found`);
+		}
+
+		// Проверяем владение, если передан userId
+		if (userId && word.userId !== userId) {
+			throw new Error('Unauthorized: You can only delete your own words');
 		}
 
 		// Удаляем переводы, если есть

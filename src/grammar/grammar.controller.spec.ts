@@ -77,8 +77,9 @@ describe('GrammarController', () => {
         grammar: grammarMock,
       });
 
-      const result = await controller.updateWord(1, grammarData);
-      expect(grammarService.updateGrammar).toHaveBeenCalledWith(1, grammarData);
+      const mockReq = { user: { sub: 'user1' } };
+      const result = await controller.updateWord(1, grammarData, mockReq);
+      expect(grammarService.updateGrammar).toHaveBeenCalledWith(1, grammarData, 'user1');
       expect(result).toEqual({
         message: 'Grammar updated successfully',
         grammar: grammarMock,
@@ -108,8 +109,9 @@ describe('GrammarController', () => {
 
       lexiconService.addOne.mockResolvedValue(lexiconMock);
 
-      const result = await controller.addWord(wordData);
-      expect(lexiconService.addOne).toHaveBeenCalledWith(wordData);
+      const mockReq = { user: { sub: 'user1' } };
+      const result = await controller.addWord(wordData, mockReq);
+      expect(lexiconService.addOne).toHaveBeenCalledWith(wordData, 'user1');
       expect(result).toEqual({ id: 42, message: 'Слово создано' });
     });
   });

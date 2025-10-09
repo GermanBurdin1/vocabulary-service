@@ -59,7 +59,7 @@ describe('LexiconService', () => {
       mockLexiconRepo.save.mockResolvedValue({ id: 1, ...wordData });
       mockLexiconRepo.findOne.mockResolvedValue({ id: 1, ...wordData });
 
-      const result = await service.addOne(wordData);
+      const result = await service.addOne(wordData, 'user1');
       expect(mockLexiconRepo.create).toHaveBeenCalled();
       expect(mockLexiconRepo.save).toHaveBeenCalled();
       expect(result).toHaveProperty('id');
@@ -85,7 +85,7 @@ describe('LexiconService', () => {
       mockLexiconRepo.create.mockImplementation((data) => data);
       mockLexiconRepo.save.mockImplementation(async (data) => ({ id: Math.random(), ...data }));
 
-      const result = await service.addMany(words);
+      const result = await service.addMany(words, 'user1');
       expect(result.length).toBe(2);
       expect(mockLexiconRepo.save).toHaveBeenCalledTimes(2);
     });

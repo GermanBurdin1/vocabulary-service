@@ -52,7 +52,7 @@ export class TranslationService {
 		api: 0
 	};
 
-	async getStats(): Promise<{ source: string; count: number }[]> {
+	async getStats(userId?: string): Promise<{ source: string; count: number }[]> {
 		const stats = await this.statsRepo.find({
 			order: { count: 'DESC' }
 		});
@@ -105,7 +105,7 @@ export class TranslationService {
 	}
 
 
-	async addTranslation(translation: NewTranslation): Promise<Translation> {
+	async addTranslation(translation: NewTranslation, userId?: string): Promise<Translation> {
 		const existing = await this.translationRepo.findOne({
 			where: {
 				source: translation.source.toLowerCase(),
@@ -124,7 +124,7 @@ export class TranslationService {
 		return this.translationRepo.save(newEntry);
 	}
 
-	async addManualTranslation(dto: ManualTranslationDTO): Promise<Translation> {
+	async addManualTranslation(dto: ManualTranslationDTO, userId?: string): Promise<Translation> {
 		const lexicon = await this.lexiconService.findById(dto.wordId);
 		if (!lexicon) {
 			throw new Error('❌ Lexicon not found');
@@ -178,7 +178,8 @@ export class TranslationService {
 	async findBySource(
 		source: string,
 		sourceLang: 'ru' | 'fr' | 'en',
-		targetLang: 'ru' | 'fr' | 'en'
+		targetLang: 'ru' | 'fr' | 'en',
+		userId?: string
 	): Promise<TranslationResponseDto> {
 		console.log(`🟡 [findBySource] source="${source}", sourceLang="${sourceLang}", targetLang="${targetLang}"`);
 
@@ -324,7 +325,7 @@ export class TranslationService {
 	}
 
 
-	async addExtraTranslation(dto: ExtraTranslationDTO): Promise<Translation> {
+	async addExtraTranslation(dto: ExtraTranslationDTO, userId?: string): Promise<Translation> {
 		const lexicon = await this.lexiconService.findById(dto.wordId);
 		if (!lexicon) throw new Error('❌ Lexicon not found');
 
@@ -351,7 +352,7 @@ export class TranslationService {
 		return await this.translationRepo.save(newEntry);
 	}
 
-	async updateTranslation(dto: UpdateTranslationDTO): Promise<Translation> {
+	async updateTranslation(dto: UpdateTranslationDTO, userId?: string): Promise<Translation> {
 		const translation = await this.translationRepo.findOneBy({ id: dto.translationId });
 		if (!translation) throw new Error('❌ Translation not found');
 
@@ -359,7 +360,7 @@ export class TranslationService {
 		return this.translationRepo.save(translation);
 	}
 
-	async updateExamples(id: number, examples: string[]) {
+	async updateExamples(id: number, examples: string[], userId?: string) {
 		const translation = await this.translationRepo.findOne({
 			where: { id },
 			relations: ['examples'] // 👈 нужно, если ты хочешь удалить старые примеры

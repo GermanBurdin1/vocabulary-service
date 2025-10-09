@@ -8,6 +8,7 @@ import {
 	HttpException,
 	Patch,
 	Param,
+	Req,
 } from '@nestjs/common';
 import { TranslationService } from './translation.service';
 import { Translation } from './translation.entity';
@@ -20,13 +21,15 @@ export class TranslationController {
 	constructor(private readonly service: TranslationService) { }
 
 	@Post()
-	async add(@Body() body: Omit<Translation, 'id'>): Promise<Translation> {
-		return await this.service.addTranslation(body);
+	async add(@Body() body: Omit<Translation, 'id'>, @Req() req: any): Promise<Translation> {
+		const userId = req.user?.sub;
+		return await this.service.addTranslation(body, userId);
 	}
 
 	@Post('manual')
-	async addManual(@Body() body: ManualTranslationDTO): Promise<Translation> {
-		return await this.service.addManualTranslation(body);
+	async addManual(@Body() body: ManualTranslationDTO, @Req() req: any): Promise<Translation> {
+		const userId = req.user?.sub;
+		return await this.service.addManualTranslation(body, userId);
 	}
 
 	@Get()
@@ -43,10 +46,12 @@ export class TranslationController {
 	async get(
 		@Query('source') source: string,
 		@Query('sourceLang') sourceLang: 'ru' | 'fr' | 'en',
-		@Query('targetLang') targetLang: 'ru' | 'fr' | 'en'
+		@Query('targetLang') targetLang: 'ru' | 'fr' | 'en',
+		@Req() req: any
 	) {
 		try {
-			return await this.service.findBySource(source, sourceLang, targetLang);
+			const userId = req.user?.sub;
+			return await this.service.findBySource(source, sourceLang, targetLang, userId);
 		} catch (error) {
 			if (error.message === 'RATE_LIMIT_EXCEEDED') {
 				throw new HttpException('Превышен лимит переводов. Подождите минуту.', 429);
@@ -56,27 +61,32 @@ export class TranslationController {
 	}
 
 	@Get('stats')
-	async getStats() {
-		return this.service.getStats();
+	async getStats(@Req() req: any) {
+		const userId = req.user?.sub;
+		return this.service.getStats(userId);
 	}
 
 	// POST /translation/extra
 @Post('extra')
-async addExtraTranslation(@Body() dto: ExtraTranslationDTO): Promise<Translation> {
-  return this.service.addExtraTranslation(dto);
+async addExtraTranslation(@Body() dto: ExtraTranslationDTO, @Req() req: any): Promise<Translation> {
+  const userId = req.user?.sub;
+  return this.service.addExtraTranslation(dto, userId);
 }
 
 @Patch('edit')
-async updateTranslation(@Body() dto: UpdateTranslationDTO): Promise<Translation> {
-  return this.service.updateTranslation(dto);
+async updateTranslation(@Body() dto: UpdateTranslationDTO, @Req() req: any): Promise<Translation> {
+  const userId = req.user?.sub;
+  return this.service.updateTranslation(dto, userId);
 }
 
 @Patch(':id/examples')
 updateExamples(
   @Param('id') id: number,
-  @Body('examples') examples: string[]
+  @Body('examples') examples: string[],
+  @Req() req: any
 ) {
-  return this.service.updateExamples(id, examples);
+  const userId = req.user?.sub;
+  return this.service.updateExamples(id, examples, userId);
 }
 
 
