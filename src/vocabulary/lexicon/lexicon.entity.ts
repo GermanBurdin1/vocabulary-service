@@ -45,6 +45,25 @@ export class Lexicon {
 	@Column({ nullable: true })
 	timestamp?: string; // Временная метка: "12:34" или "1:23:45" (минута:секунда или час:минута:секунда)
 
+	// 📱 [MOBILE APP ONLY] Дополнительные поля для медиа-контента
+	@Column({ nullable: true })
+	genre?: string; // Жанр (films/series)
+
+	@Column({ nullable: true })
+	year?: number; // Год выпуска (films/series/music)
+
+	@Column({ nullable: true })
+	director?: string; // Режиссер (films/series)
+
+	@Column({ nullable: true })
+	host?: string; // Ведущий (podcasts)
+
+	@Column({ nullable: true })
+	guests?: string; // Приглашенные (podcasts)
+
+	@Column({ nullable: true })
+	album?: string; // Альбом (music)
+
 	@Column({ type: 'bigint' })
 	createdAt: number;
 

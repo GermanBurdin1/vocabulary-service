@@ -300,6 +300,13 @@ export class LexiconService {
 			translated: wordData.translations && wordData.translations.length > 0 ? true : false,
 			postponed: wordData.postponed ?? false,
 			userId: userId,
+			// Дополнительные поля для медиа-контента
+			genre: wordData.genre,
+			year: wordData.year,
+			director: wordData.director,
+			host: wordData.host,
+			guests: wordData.guests,
+			album: wordData.album,
 		});
 
 		console.log('📱 [MOBILE APP] Создана сущность Lexicon:', word);
