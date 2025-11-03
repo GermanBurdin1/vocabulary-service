@@ -257,5 +257,337 @@ export class LexiconService {
 		return count;
 	}
 
+	// 📱 ========== МЕТОДЫ ДЛЯ МОБИЛЬНОГО ПРИЛОЖЕНИЯ (Flutter) ==========
+	// Эти методы используются ТОЛЬКО в Flutter приложении
+	// НЕ используются в Angular приложении
+	// НЕ влияют на существующий функционал
+
+	/**
+	 * 📱 [MOBILE APP ONLY] Добавить слово для мобильного приложения
+	 * 
+	 * Этот метод:
+	 * - Используется ТОЛЬКО в Flutter приложении
+	 * - НЕ влияет на Angular приложение
+	 * - Позволяет добавлять слова БЕЗ galaxy/subtopic (для медиа-контента)
+	 * - Если передан mediaContentTitle, то galaxy и subtopic устанавливаются в пустую строку
+	 * 
+	 * @param wordData - данные слова
+	 * @param userId - ID пользователя
+	 */
+	async addOneForMobile(wordData: Partial<Lexicon>, userId: string): Promise<Lexicon> {
+		console.log('📱 [MOBILE APP] addOneForMobile called');
+		console.log('📱 wordData:', wordData);
+		console.log('📱 userId:', userId);
+
+		let grammarEntity = null;
+
+		if (wordData.grammar) {
+			grammarEntity = this.grammarRepo.create(wordData.grammar);
+			grammarEntity = await this.grammarRepo.save(grammarEntity);
+			console.log('📱 [MOBILE APP] Грамматика сохранена:', grammarEntity);
+		}
+
+		// Для медиа-контента используем пустые строки для galaxy/subtopic
+		const galaxy = wordData.mediaContentTitle ? '' : (wordData.galaxy || '');
+		const subtopic = wordData.mediaContentTitle ? '' : (wordData.subtopic || '');
+
+		const word = this.lexiconRepo.create({
+			...wordData,
+			galaxy,
+			subtopic,
+			grammar: grammarEntity ?? undefined,
+			createdAt: Date.now(),
+			translated: wordData.translations && wordData.translations.length > 0 ? true : false,
+			postponed: wordData.postponed ?? false,
+			userId: userId,
+		});
+
+		console.log('📱 [MOBILE APP] Создана сущность Lexicon:', word);
+
+		const saved = await this.lexiconRepo.save(word);
+		console.log('📱 [MOBILE APP] Сохранено в БД:', saved);
+
+		// Обрабатываем переводы
+		if (wordData.translations && wordData.translations.length > 0) {
+			const translations = wordData.translations.map(t => this.translationRepo.create({
+				source: t.source ?? '',
+				target: t.target,
+				sourceLang: t.sourceLang ?? 'fr',
+				targetLang: t.targetLang ?? 'ru',
+				meaning: t.meaning ?? '',
+				example: t.example ?? null,
+				lexicon: saved,
+			}));
+
+			const savedTranslations = await this.translationRepo.save(translations);
+			console.log('📱 [MOBILE APP] Переводы сохранены:', savedTranslations);
+
+			saved.translations = savedTranslations;
+			saved.translated = true;
+			await this.lexiconRepo.save(saved);
+		}
+
+		return saved;
+	}
+
+	/**
+	 * 📱 [MOBILE APP ONLY] Обновить слово для мобильного приложения
+	 * 
+	 * Этот метод:
+	 * - Используется ТОЛЬКО в Flutter приложении
+	 * - НЕ влияет на Angular приложение
+	 * - Обновляет существующее слово и его переводы
+	 * - Если переданы переводы, они заменяют существующие
+	 * 
+	 * @param id - ID слова для обновления
+	 * @param wordData - данные для обновления
+	 * @param userId - ID пользователя
+	 */
+	async updateOneForMobile(id: number, wordData: Partial<Lexicon>, userId: string): Promise<Lexicon> {
+		console.log('📱 [MOBILE APP] updateOneForMobile called');
+		console.log('📱 id:', id);
+		console.log('📱 wordData:', wordData);
+		console.log('📱 userId:', userId);
+
+		// Находим существующее слово
+		const existingWord = await this.lexiconRepo.findOne({
+			where: { id },
+			relations: ['translations', 'grammar']
+		});
+
+		if (!existingWord) {
+			throw new NotFoundException(`Word with id ${id} not found`);
+		}
+
+		// Проверяем владение
+		if (existingWord.userId !== userId) {
+			throw new Error('Unauthorized: You can only update your own words');
+		}
+
+		// Обновляем грамматику, если она передана
+		let grammarEntity = existingWord.grammar;
+		if (wordData.grammar) {
+			if (grammarEntity) {
+				// Обновляем существующую грамматику
+				Object.assign(grammarEntity, wordData.grammar);
+				grammarEntity = await this.grammarRepo.save(grammarEntity);
+			} else {
+				// Создаем новую грамматику
+				grammarEntity = this.grammarRepo.create(wordData.grammar);
+				grammarEntity = await this.grammarRepo.save(grammarEntity);
+			}
+			console.log('📱 [MOBILE APP] Грамматика обновлена:', grammarEntity);
+		}
+
+		// Подготавливаем данные для обновления
+		const updateData: Partial<Lexicon> = {
+			...wordData,
+			grammar: grammarEntity ?? undefined,
+		};
+
+		// Удаляем translations из updateData, так как мы обработаем их отдельно
+		delete updateData.translations;
+
+		// Обновляем основные поля слова
+		await this.lexiconRepo.update(id, updateData);
+
+		// Обрабатываем переводы
+		if (wordData.translations && wordData.translations.length > 0) {
+			// Удаляем старые переводы
+			if (existingWord.translations && existingWord.translations.length > 0) {
+				await this.translationRepo.delete({ lexicon: { id } });
+				console.log(`📱 [MOBILE APP] Удалено старых переводов: ${existingWord.translations.length}`);
+			}
+
+			// Создаем новые переводы
+			const savedWord = await this.lexiconRepo.findOne({ where: { id } });
+			if (savedWord) {
+				const translations = wordData.translations.map(t => this.translationRepo.create({
+					source: t.source ?? '',
+					target: t.target,
+					sourceLang: t.sourceLang ?? 'fr',
+					targetLang: t.targetLang ?? 'ru',
+					meaning: t.meaning ?? '',
+					example: t.example ?? null,
+					lexicon: savedWord,
+				}));
+
+				const savedTranslations = await this.translationRepo.save(translations);
+				console.log('📱 [MOBILE APP] Переводы обновлены:', savedTranslations);
+
+				// Обновляем флаг translated
+				await this.lexiconRepo.update(id, { translated: true });
+			}
+		} else {
+			// Если переводы не переданы, но слово было переведено, проверяем наличие переводов
+			const existingTranslations = await this.translationRepo.find({ where: { lexicon: { id } } });
+			if (existingTranslations.length === 0) {
+				await this.lexiconRepo.update(id, { translated: false });
+			}
+		}
+
+		// Возвращаем обновленное слово с relations
+		const updatedWord = await this.lexiconRepo.findOne({
+			where: { id },
+			relations: ['translations', 'grammar'],
+		});
+
+		console.log('📱 [MOBILE APP] Слово обновлено:', updatedWord);
+		return updatedWord!;
+	}
+
+	/**
+	 * 📱 [MOBILE APP ONLY] Получить слова с фильтрацией по медиа-контенту
+	 * 
+	 * Этот метод:
+	 * - Используется ТОЛЬКО в Flutter приложении
+	 * - НЕ влияет на Angular приложение
+	 * - Фильтрует слова по galaxy, subtopic, mediaType, mediaPlatform, mediaContentTitle
+	 * - Если параметр не передан (undefined), он игнорируется в фильтрации
+	 * 
+	 * @param galaxy - название галактики (опционально)
+	 * @param subtopic - название подтемы (опционально)
+	 * @param mediaType - тип медиа (опционально)
+	 * @param mediaPlatform - название платформы (опционально)
+	 * @param mediaContentTitle - название контента (опционально)
+	 * @param userId - ID пользователя (опционально)
+	 */
+	async getFilteredForMobile(
+		galaxy?: string,
+		subtopic?: string,
+		mediaType?: string,
+		mediaPlatform?: string,
+		mediaContentTitle?: string,
+		userId?: string
+	): Promise<Lexicon[]> {
+		console.log('📱 [MOBILE APP] getFilteredForMobile service called');
+		console.log('📱 Parameters:', { galaxy, subtopic, mediaType, mediaPlatform, mediaContentTitle, userId });
+
+		const whereConditions: any = {};
+
+		// Добавляем условия только для переданных параметров
+		if (galaxy !== undefined && galaxy !== null && galaxy !== '') {
+			whereConditions.galaxy = galaxy;
+		}
+		if (subtopic !== undefined && subtopic !== null && subtopic !== '') {
+			whereConditions.subtopic = subtopic;
+		}
+		if (mediaType !== undefined && mediaType !== null && mediaType !== '') {
+			whereConditions.mediaType = mediaType;
+		}
+		if (mediaPlatform !== undefined && mediaPlatform !== null && mediaPlatform !== '') {
+			whereConditions.mediaPlatform = mediaPlatform;
+		}
+		if (mediaContentTitle !== undefined && mediaContentTitle !== null && mediaContentTitle !== '') {
+			whereConditions.mediaContentTitle = mediaContentTitle;
+		}
+		if (userId !== undefined && userId !== null && userId !== 'undefined' && userId !== 'null' && userId !== '') {
+			whereConditions.userId = userId;
+		}
+
+		console.log('📱 [MOBILE APP] Where conditions:', whereConditions);
+
+		const result = await this.lexiconRepo.find({
+			where: whereConditions,
+			relations: ['translations', 'grammar'],
+			order: { createdAt: 'DESC' },
+		});
+
+		console.log(`📱 [MOBILE APP] Found ${result.length} words`);
+		return result;
+	}
+	
+	/**
+	 * 📱 [MOBILE APP ONLY] Получить статистику по подтемам для галактики
+	 * 
+	 * Этот метод:
+	 * - Используется ТОЛЬКО в Flutter приложении
+	 * - НЕ влияет на Angular приложение
+	 * - Группирует слова по подтемам и считает их количество
+	 * - Разделяет переведённые и непереведённые
+	 * 
+	 * @param galaxy - название галактики
+	 * @param userId - ID пользователя
+	 * @returns массив с статистикой: [{ 
+	 *   subtopic, 
+	 *   totalWords, totalExpressions, total,
+	 *   translatedWords, untranslatedWords,
+	 *   translatedExpressions, untranslatedExpressions
+	 * }]
+	 */
+	async getSubtopicsStatsForMobile(galaxy: string, userId: string) {
+		console.log(`📱 [MOBILE APP] Получение статистики подтем для галактики "${galaxy}", userId: ${userId}`);
+		
+		if (!userId || userId === 'undefined' || userId === 'null') {
+			console.warn('⚠️ [MOBILE APP] userId пустой или недействительный:', userId);
+			return [];
+		}
+
+		// Получаем все слова пользователя для данной галактики
+		const words = await this.lexiconRepo.find({
+			where: {
+				galaxy,
+				userId
+			},
+			relations: ['translations'] // Загружаем переводы чтобы проверить translated
+		});
+
+		console.log(`📱 [MOBILE APP] Найдено ${words.length} слов для галактики "${galaxy}"`);
+
+		// Группируем по подтемам и считаем слова/выражения + переведённые/непереведённые
+		const statsMap = words.reduce((acc, word) => {
+			const subtopic = word.subtopic || 'Без подтемы';
+			
+			if (!acc[subtopic]) {
+				acc[subtopic] = {
+					subtopic,
+					totalWords: 0,
+					totalExpressions: 0,
+					total: 0,
+					translatedWords: 0,
+					untranslatedWords: 0,
+					translatedExpressions: 0,
+					untranslatedExpressions: 0
+				};
+			}
+
+			const isTranslated = word.translated === true || (word.translations && word.translations.length > 0);
+
+			// Считаем отдельно слова и выражения
+			if (word.type === 'word') {
+				acc[subtopic].totalWords += 1;
+				if (isTranslated) {
+					acc[subtopic].translatedWords += 1;
+				} else {
+					acc[subtopic].untranslatedWords += 1;
+				}
+			} else if (word.type === 'expression') {
+				acc[subtopic].totalExpressions += 1;
+				if (isTranslated) {
+					acc[subtopic].translatedExpressions += 1;
+				} else {
+					acc[subtopic].untranslatedExpressions += 1;
+				}
+			}
+
+			acc[subtopic].total += 1;
+
+			return acc;
+		}, {} as Record<string, { 
+			subtopic: string; 
+			totalWords: number; 
+			totalExpressions: number; 
+			total: number;
+			translatedWords: number;
+			untranslatedWords: number;
+			translatedExpressions: number;
+			untranslatedExpressions: number;
+		}>);
+
+		const result = Object.values(statsMap);
+		console.log(`📱 [MOBILE APP] Статистика по ${result.length} подтемам:`, result);
+		return result;
+	}
+
 
 }

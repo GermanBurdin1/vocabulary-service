@@ -19,11 +19,16 @@ import { TranslationStats } from './translation/translation-stats.entity';
 import { Example } from './translation/example.entity';
 import { GrammarModule } from './grammar/grammar.module';
 import { Grammar } from './grammar/grammar.entity';
+import { SpeechModule } from './speech/speech.module';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtStrategy } from './auth/jwt.strategy';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+// 📱 [MOBILE APP ONLY] - Импорт для медиа-словаря
+import { MediaVocabModule } from './vocabulary/media-vocab/media-vocab.module';
+import { MediaPlatform } from './vocabulary/media-vocab/media-platform.entity';
+import { MediaContent } from './vocabulary/media-vocab/media-content.entity';
 
 @Module({
   imports: [
@@ -38,7 +43,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
         username: config.get<string>('DB_USERNAME'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
-        entities: [Lexicon, Translation, TranslationStats, Example, Grammar],
+        entities: [Lexicon, Translation, TranslationStats, Example, Grammar, MediaPlatform, MediaContent], // 📱 MediaPlatform, MediaContent для мобильного приложения
 				// отключить на проде
         synchronize: true, 
       }),
@@ -59,6 +64,8 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     TranslationModule,
     LexiconModule,
     GrammarModule,
+    SpeechModule,
+    MediaVocabModule, // 📱 [MOBILE APP ONLY] Модуль для медиа-словаря Flutter приложения
   ],
   controllers: [AppController],
   providers: [

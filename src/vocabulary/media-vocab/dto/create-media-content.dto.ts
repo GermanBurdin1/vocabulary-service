@@ -1,0 +1,14 @@
+// 📱 ========== DTO ДЛЯ МОБИЛЬНОГО ПРИЛОЖЕНИЯ (Flutter) ==========
+// Этот DTO используется ТОЛЬКО в Flutter приложении
+
+export class CreateMediaContentDto {
+	mediaType: string; // 'films', 'series', 'music', 'podcasts'
+	title: string;
+	icon?: string;
+	metadata?: string; // JSON string with additional info
+}
+
+
+
+
+

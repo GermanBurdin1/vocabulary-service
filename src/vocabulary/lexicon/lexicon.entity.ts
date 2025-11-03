@@ -25,6 +25,26 @@ export class Lexicon {
 	@Column()
 	subtopic: string;
 
+	// 📱 [MOBILE APP ONLY] Поля для медиа-словаря Flutter приложения
+	@Column({ nullable: true })
+	mediaType?: string; // 'films', 'series', 'music', 'podcasts'
+
+	@Column({ nullable: true })
+	mediaPlatform?: string; // 'Netflix', 'Spotify', etc. (для классификации по платформам)
+
+	@Column({ nullable: true })
+	mediaContentTitle?: string; // 'Dexter', 'Inception', etc. (для классификации по контенту)
+
+	// Временные метки (опционально)
+	@Column({ nullable: true })
+	season?: number; // Сезон (для сериалов)
+
+	@Column({ nullable: true })
+	episode?: number; // Серия (для сериалов)
+
+	@Column({ nullable: true })
+	timestamp?: string; // Временная метка: "12:34" или "1:23:45" (минута:секунда или час:минута:секунда)
+
 	@Column({ type: 'bigint' })
 	createdAt: number;
 
