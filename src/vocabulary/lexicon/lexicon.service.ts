@@ -358,6 +358,12 @@ export class LexiconService {
 		const galaxy = wordData.galaxy || '';
 		const subtopic = wordData.subtopic || '';
 
+		// Обрабатываем genres: если передан массив, сохраняем как JSON-строку
+		let genreValue = wordData.genre;
+		if ((wordData as any).genres && Array.isArray((wordData as any).genres) && (wordData as any).genres.length > 0) {
+			genreValue = JSON.stringify((wordData as any).genres);
+		}
+
 		const word = this.lexiconRepo.create({
 			...wordData,
 			galaxy,
@@ -368,7 +374,7 @@ export class LexiconService {
 			postponed: wordData.postponed ?? false,
 			userId: userId,
 			// Дополнительные поля для медиа-контента
-			genre: wordData.genre,
+			genre: genreValue,
 			year: wordData.year,
 			director: wordData.director,
 			host: wordData.host,
@@ -453,11 +459,22 @@ export class LexiconService {
 			console.log('📱 [MOBILE APP] Грамматика обновлена:', grammarEntity);
 		}
 
+		// Обрабатываем genres: если передан массив, сохраняем как JSON-строку
+		let genreValue = wordData.genre;
+		if ((wordData as any).genres && Array.isArray((wordData as any).genres) && (wordData as any).genres.length > 0) {
+			genreValue = JSON.stringify((wordData as any).genres);
+		}
+
 		// Подготавливаем данные для обновления
 		const updateData: Partial<Lexicon> = {
 			...wordData,
 			grammar: grammarEntity ?? undefined,
 		};
+
+		// Обновляем genre если был передан genres
+		if (genreValue !== undefined) {
+			updateData.genre = genreValue;
+		}
 
 		// Удаляем translations из updateData, так как мы обработаем их отдельно
 		delete updateData.translations;
