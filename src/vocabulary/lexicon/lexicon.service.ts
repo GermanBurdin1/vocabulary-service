@@ -287,9 +287,10 @@ export class LexiconService {
 			console.log('📱 [MOBILE APP] Грамматика сохранена:', grammarEntity);
 		}
 
-		// Для медиа-контента используем пустые строки для galaxy/subtopic
-		const galaxy = wordData.mediaContentTitle ? '' : (wordData.galaxy || '');
-		const subtopic = wordData.mediaContentTitle ? '' : (wordData.subtopic || '');
+		// Сохраняем galaxy/subtopic, если они указаны (даже если есть mediaContentTitle)
+		// Это позволяет связывать контент с темами (двустороннее связывание)
+		const galaxy = wordData.galaxy || '';
+		const subtopic = wordData.subtopic || '';
 
 		const word = this.lexiconRepo.create({
 			...wordData,
