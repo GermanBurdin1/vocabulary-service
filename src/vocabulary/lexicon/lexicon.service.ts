@@ -232,6 +232,72 @@ export class LexiconService {
 		return result;
 	}
 
+	/**
+	 * 📱 [MOBILE APP ONLY] Удалить весь контент со всеми словами
+	 * 
+	 * Этот метод:
+	 * - Используется ТОЛЬКО в Flutter приложении
+	 * - НЕ влияет на Angular приложение
+	 * - Удаляет все слова для указанного контента
+	 * 
+	 * @param mediaType - тип медиа
+	 * @param mediaPlatform - платформа
+	 * @param mediaContentTitle - название контента
+	 * @param userId - ID пользователя
+	 * @returns количество удаленных слов
+	 */
+	async deleteContentForMobile(
+		mediaType: string,
+		mediaPlatform: string,
+		mediaContentTitle: string,
+		userId: string
+	): Promise<{ deletedCount: number }> {
+		console.log('📱 [MOBILE APP] deleteContentForMobile called');
+		console.log('📱 Parameters:', { mediaType, mediaPlatform, mediaContentTitle, userId });
+
+		// Находим все слова для данного контента
+		const words = await this.lexiconRepo.find({
+			where: {
+				mediaType,
+				mediaPlatform,
+				mediaContentTitle,
+				userId,
+			},
+			relations: ['translations', 'grammar'],
+		});
+
+		console.log(`📱 [MOBILE APP] Найдено слов для удаления: ${words.length}`);
+
+		if (words.length === 0) {
+			return { deletedCount: 0 };
+		}
+
+		let deletedCount = 0;
+
+		// Удаляем каждое слово вместе с переводами и грамматикой
+		for (const word of words) {
+			// Удаляем переводы
+			if (word.translations && word.translations.length > 0) {
+				await this.translationRepo.delete({ lexicon: { id: word.id } });
+				console.log(`🗑 Удалено переводов для слова id=${word.id}:`, word.translations.length);
+			}
+
+			// Удаляем грамматику
+			if (word.grammar) {
+				await this.grammarRepo.delete(word.grammar.id);
+				console.log(`🗑 Удалена грамматика id=${word.grammar.id}`);
+			}
+
+			// Удаляем само слово
+			await this.lexiconRepo.delete(word.id);
+			deletedCount++;
+			console.log(`🗑 Удалено слово id=${word.id}`);
+		}
+
+		console.log(`📱 [MOBILE APP] Всего удалено слов: ${deletedCount}`);
+		return { deletedCount };
+	}
+
 	// ==================== МЕТОДЫ ДЛЯ СТАТИСТИКИ ====================
 
 	/**
@@ -466,10 +532,16 @@ export class LexiconService {
 		mediaType?: string,
 		mediaPlatform?: string,
 		mediaContentTitle?: string,
-		userId?: string
+		userId?: string,
+		genre?: string,
+		year?: number,
+		director?: string,
+		host?: string,
+		guests?: string,
+		album?: string
 	): Promise<Lexicon[]> {
 		console.log('📱 [MOBILE APP] getFilteredForMobile service called');
-		console.log('📱 Parameters:', { galaxy, subtopic, mediaType, mediaPlatform, mediaContentTitle, userId });
+		console.log('📱 Parameters:', { galaxy, subtopic, mediaType, mediaPlatform, mediaContentTitle, userId, genre, year, director, host, guests, album });
 
 		const whereConditions: any = {};
 
@@ -491,6 +563,26 @@ export class LexiconService {
 		}
 		if (userId !== undefined && userId !== null && userId !== 'undefined' && userId !== 'null' && userId !== '') {
 			whereConditions.userId = userId;
+		}
+		
+		// 📱 [MOBILE APP ONLY] Дополнительные фильтры для медиа-контента
+		if (genre !== undefined && genre !== null && genre !== '') {
+			whereConditions.genre = genre;
+		}
+		if (year !== undefined && year !== null) {
+			whereConditions.year = year;
+		}
+		if (director !== undefined && director !== null && director !== '') {
+			whereConditions.director = director;
+		}
+		if (host !== undefined && host !== null && host !== '') {
+			whereConditions.host = host;
+		}
+		if (guests !== undefined && guests !== null && guests !== '') {
+			whereConditions.guests = guests;
+		}
+		if (album !== undefined && album !== null && album !== '') {
+			whereConditions.album = album;
 		}
 
 		console.log('📱 [MOBILE APP] Where conditions:', whereConditions);

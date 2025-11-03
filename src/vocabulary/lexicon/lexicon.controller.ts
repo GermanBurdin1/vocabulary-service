@@ -43,7 +43,13 @@ export class LexiconController {
 		@Query('mediaType') mediaType?: string,
 		@Query('mediaPlatform') mediaPlatform?: string,
 		@Query('mediaContentTitle') mediaContentTitle?: string,
-		@Query('userId') userId?: string
+		@Query('userId') userId?: string,
+		@Query('genre') genre?: string,
+		@Query('year') year?: string,
+		@Query('director') director?: string,
+		@Query('host') host?: string,
+		@Query('guests') guests?: string,
+		@Query('album') album?: string
 	) {
 		console.log('📱 [MOBILE APP] getFilteredForMobile called with:', {
 			galaxy,
@@ -51,15 +57,31 @@ export class LexiconController {
 			mediaType,
 			mediaPlatform,
 			mediaContentTitle,
-			userId
+			userId,
+			genre,
+			year,
+			director,
+			host,
+			guests,
+			album
 		});
+		
+		// Парсим year из строки в число, если передан
+		const yearNumber = year ? parseInt(year, 10) : undefined;
+		
 		return this.lexiconService.getFilteredForMobile(
 			galaxy,
 			subtopic,
 			mediaType,
 			mediaPlatform,
 			mediaContentTitle,
-			userId
+			userId,
+			genre,
+			yearNumber,
+			director,
+			host,
+			guests,
+			album
 		);
 	}
 
@@ -144,6 +166,36 @@ export class LexiconController {
 	@Delete(':id')
 	async deleteWord(@Param('id') id: number) {
 		return this.lexiconService.deleteWord(+id);
+	}
+
+	// 📱 [MOBILE APP ONLY] Удалить контент со всеми словами
+	// Этот эндпоинт используется ТОЛЬКО в Flutter приложении
+	// НЕ используется в Angular приложении
+	// НЕ влияет на существующий функционал
+	/**
+	 * 📱 [MOBILE APP ONLY] Удалить контент со всеми словами
+	 * 
+	 * Этот метод:
+	 * - Используется ТОЛЬКО в Flutter приложении
+	 * - НЕ влияет на Angular приложение
+	 * - Удаляет все слова для указанного контента
+	 */
+	@Delete('mobile/content')
+	async deleteContentForMobile(
+		@Query('mediaType') mediaType: string,
+		@Query('mediaPlatform') mediaPlatform: string,
+		@Query('mediaContentTitle') mediaContentTitle: string,
+		@Req() req: any
+	) {
+		const userId = req.user?.sub;
+		console.log('📱 [MOBILE APP] DELETE /lexicon/mobile/content called');
+		console.log('📱 Parameters:', { mediaType, mediaPlatform, mediaContentTitle, userId });
+		return this.lexiconService.deleteContentForMobile(
+			mediaType,
+			mediaPlatform,
+			mediaContentTitle,
+			userId
+		);
 	}
 
 	// ==================== ENDPOINT ДЛЯ СТАТИСТИКИ ====================
